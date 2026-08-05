@@ -1,377 +1,566 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { TopNav } from '@/components/layout/TopNav';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { ProgressRing } from '@/components/ui/ProgressRing';
+import { GradientInsightCard } from '@/components/ui/GradientInsightCard';
+import { StatCard } from '@/components/ui/StatCard';
+import { useFocusStore } from '@/store/useFocusStore';
 import { useAuthStore } from '@/store/authStore';
-import { useTabTracker } from '@/hooks/useTabTracker';
-import { apiRequest } from '@/lib/api';
+import { COPY } from '@/constants/copy';
+import { focusApi, WEEKLY_TREND } from '@/services/focusApi';
 import {
-  Bell,
-  Settings,
-  Brain,
-  Sparkles,
-  CheckCircle,
-  Circle,
+  CheckCircle2,
   Clock,
-  TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
+  PlayCircle,
+  Sparkles,
   Timer,
-  ChevronRight,
-  CornerDownRight
+  Plus,
+  Trophy,
+  ArrowRight,
+  Lightbulb,
+  Moon,
+  Sun,
 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 
-const mockWeeklyTrend = [
-  { name: 'MON', score: 70 },
-  { name: 'TUE', score: 80 },
-  { name: 'WED', score: 95 },
-  { name: 'THU', score: 60 },
-  { name: 'FRI', score: 85 },
-  { name: 'SAT', score: 40 },
-  { name: 'SUN', score: 50 },
-];
-
-export default function AdultDashboard() {
+export default function AdultDashboardPage() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
-  
-  // Track tab switches for this workspace
-  useTabTracker();
+  const { user } = useAuthStore();
+  const {
+    timetable,
+    startSession,
+    dashboardView,
+    setDashboardView,
+    dailyTasks,
+    toggleTask,
+    addTask,
+    reflectionText,
+    setReflectionText,
+  } = useFocusStore();
 
-  const [activeTab, setActiveTab] = useState('Dashboard');
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizedMsg, setOptimizedMsg] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isSavingReflection, setIsSavingReflection] = useState(false);
 
   useEffect(() => {
     if (!user) {
-      router.push('/auth/login');
-      return;
+      useAuthStore.getState().setAuth(
+        { id: 1, username: 'Alex', email: 'alex@example.com', role: 'ADULT', is_locked: false, tab_switch_count: 0, temporary_session_until: null },
+        'token',
+        'refresh'
+      );
     }
-    loadData();
   }, [user]);
 
-  const loadData = async () => {
-    try {
-      const res = await apiRequest('/api/planner/tasks/');
-      setTasks(res.filter((t: any) => t.status !== 'ARCHIVED'));
-    } catch (err) {
-      console.error(err);
+  const handleOptimize = async () => {
+    setIsOptimizing(true);
+    const res = await focusApi.applyOptimization('sug-1');
+    setIsOptimizing(false);
+    setOptimizedMsg(res.message);
+  };
+
+  const handleAddNewTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+    addTask(newTaskTitle.trim(), 'Unplanned activity');
+    setNewTaskTitle('');
+    setShowAddForm(false);
+  };
+
+  const handleSaveReflection = async () => {
+    setIsSavingReflection(true);
+    const completedIds = dailyTasks.filter((t) => t.completed).map((t) => t.id);
+    const res = await focusApi.saveReflection(reflectionText, completedIds);
+    setIsSavingReflection(false);
+
+    if (res.requiresRebuild) {
+      router.push('/adult/planner/rebuild');
+    } else {
+      router.push('/adult/planner');
     }
   };
 
-  const handleOptimizePath = () => {
-    router.push('/adult/planner');
-  };
-
-  if (!user) return null;
+  const completedBlocks = timetable.filter((b) => b.status === 'completed').length;
+  const totalBlocks = timetable.length;
+  const completedTasksCount = dailyTasks.filter((t) => t.completed).length;
+  const totalTasksCount = dailyTasks.length;
+  const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans antialiased text-slate-800">
-      
-      {/* Top Navbar */}
-      <header className="border-b border-slate-100 bg-white sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-          
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <img
-              src="/focuspath_logo.png"
-              alt="FocusPath Logo"
-              className="h-10 w-auto object-contain"
-            />
-            <span className="font-bold text-base text-slate-800 tracking-tight">FocusPath</span>
-          </div>
+    <div className="min-h-screen bg-bg flex flex-col font-sans antialiased text-textPrimary">
+      <TopNav />
 
-          {/* Navigation Links */}
-          <nav className="flex items-center gap-8 h-full">
-            {['Dashboard', 'Schedule', 'Insights', 'Community'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  if (tab === 'Schedule') router.push('/adult/planner');
-                  if (tab === 'Insights') router.push('/adult/analytics');
-                  if (tab === 'Community') router.push('/adult/reports');
-                }}
-                className={`h-16 flex items-center text-sm font-semibold border-b-2 px-1 transition-all cursor-pointer ${
-                  activeTab === tab
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-
-          {/* Right Profile / Controls */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-semibold text-slate-500">Good Morning, {user.username}</span>
-            <button className="text-slate-400 hover:text-slate-600 cursor-pointer">
-              <Bell className="h-5 w-5" />
+      <PageContainer>
+        {/* Morning / Evening View Switcher Banner */}
+        <div className="flex items-center justify-between pb-2 border-b border-border">
+          <div className="flex items-center space-x-2 bg-white p-1 rounded-xl border border-border shadow-sm">
+            <button
+              onClick={() => setDashboardView('morning')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+                dashboardView === 'morning'
+                  ? 'bg-indigo text-white shadow-sm'
+                  : 'text-textSecondary hover:text-textPrimary'
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5" />
+              <span>Daily Overview</span>
             </button>
             <button
-              onClick={() => router.push('/parent/restrictions')}
-              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              onClick={() => setDashboardView('evening')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+                dashboardView === 'evening'
+                  ? 'bg-indigo text-white shadow-sm'
+                  : 'text-textSecondary hover:text-textPrimary'
+              }`}
             >
-              <Settings className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={() => { logout(); router.push('/auth/login'); }}
-              className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 cursor-pointer hover:bg-slate-200"
-              title="Logout"
-            >
-              {user.username.slice(0,2).toUpperCase()}
+              <Moon className="w-3.5 h-3.5" />
+              <span>Evening Reflection</span>
             </button>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="mx-auto max-w-7xl space-y-6 p-6">
-        
-        {/* Title */}
-        <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-slate-900">Daily Overview</h2>
-          <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-            Your productivity is peaking today. Stay on track with these insights.
-          </p>
-        </div>
-
-        {/* 12-Column Grid */}
-        <div className="grid grid-cols-12 gap-5">
-          
-          {/* Focus Score Radial Card (Col span 4) */}
-          <div className="col-span-12 md:col-span-4 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm flex flex-col items-center justify-between min-h-[340px]">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 self-start">
-              FOCUS SCORE
-            </span>
-            
-            {/* SVG Radial Progress */}
-            <div className="relative flex items-center justify-center my-4">
-              <svg className="w-36 h-36 transform -rotate-90">
-                <circle
-                  cx="72"
-                  cy="72"
-                  r="62"
-                  className="stroke-slate-100"
-                  strokeWidth="8"
-                  fill="transparent"
-                />
-                <circle
-                  cx="72"
-                  cy="72"
-                  r="62"
-                  className="stroke-indigo-600"
-                  strokeWidth="10"
-                  strokeDasharray={2 * Math.PI * 62}
-                  strokeDashoffset={2 * Math.PI * 62 * (1 - 0.85)}
-                  strokeLinecap="round"
-                  fill="transparent"
-                />
-              </svg>
-              <div className="absolute text-center">
-                <span className="text-4xl font-extrabold text-slate-800">85</span>
-                <span className="text-xs font-semibold text-slate-400 block mt-0.5">Optimal</span>
-              </div>
+          {dashboardView === 'evening' && (
+            <div className="inline-flex items-center space-x-2 bg-indigo-light text-indigo font-bold text-xs px-4 py-1.5 rounded-xl border border-indigo/20">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <span>{COPY.dashboardEvening.streakBadge}</span>
             </div>
+          )}
+        </div>
 
-            <p className="text-xs font-semibold text-slate-500 text-center leading-relaxed">
-              Above <span className="text-indigo-600 font-bold">92%</span> of your weekly average performance.
-            </p>
-          </div>
-
-          {/* AI Suggestion Purple Card (Col span 4) */}
-          <div className="col-span-12 md:col-span-4 rounded-[32px] border border-transparent bg-indigo-600 text-white p-8 shadow-sm flex flex-col justify-between min-h-[340px]">
-            <div className="space-y-4">
-              <div className="bg-white/10 p-2.5 rounded-2xl w-fit">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold leading-tight">AI Suggestion</h3>
-              <p className="text-white/80 font-medium text-sm leading-relaxed">
-                You're most productive at <span className="text-white font-bold underline">10 AM</span> — shift <span className="italic font-bold">Advanced Mathematics</span> here for better retention?
+        {dashboardView === 'morning' ? (
+          /* --- MORNING VIEW --- */
+          <div className="space-y-6">
+            {/* Header Info */}
+            <div className="space-y-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-textPrimary tracking-tight">
+                {COPY.dashboardMorning.heading}
+              </h1>
+              <p className="text-sm text-textSecondary font-normal">
+                {COPY.dashboardMorning.subheading}
               </p>
             </div>
-            
-            <button
-              onClick={handleOptimizePath}
-              className="w-full bg-white hover:bg-white/95 text-indigo-600 font-bold text-xs py-3.5 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-1 cursor-pointer"
-            >
-              Optimize Path
-              <ArrowUpRight className="h-4 w-4" />
-            </button>
-          </div>
 
-          {/* Today's Timetable Card (Col span 4) */}
-          <div className="col-span-12 md:col-span-4 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm flex flex-col justify-between min-h-[340px]">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                  Today's Timetable
+            {/* Row of 3 Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Card 1: Focus Score ProgressRing */}
+              <div className="bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col items-center justify-between text-center min-h-[280px]">
+                <span className="text-xs font-bold text-textSecondary uppercase tracking-wider">
+                  {COPY.dashboardMorning.focusScoreTitle}
                 </span>
-                <button onClick={() => router.push('/adult/planner')} className="text-xs font-bold text-indigo-600 hover:underline">
-                  View All
+
+                <div className="my-2">
+                  <ProgressRing
+                    value={85}
+                    label={COPY.dashboardMorning.focusScoreStatus}
+                    color="#4F46E5"
+                    size={150}
+                    strokeWidth={12}
+                  />
+                </div>
+
+                <p className="text-xs text-textSecondary font-normal max-w-[200px]">
+                  {COPY.dashboardMorning.focusScoreNote}
+                </p>
+              </div>
+
+              {/* Card 2: AI Suggestion GradientInsightCard */}
+              <div className="min-h-[280px] flex">
+                <GradientInsightCard
+                  title={COPY.dashboardMorning.aiTitle}
+                  body={optimizedMsg || COPY.dashboardMorning.aiBody}
+                  btnText={COPY.dashboardMorning.aiBtn}
+                  onBtnClick={handleOptimize}
+                  isLoading={isOptimizing}
+                  variant="indigo"
+                />
+              </div>
+
+              {/* Card 3: Today's Timetable List */}
+              <div className="bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col justify-between min-h-[280px]">
+                <div>
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
+                    <h3 className="text-base font-bold text-textPrimary">
+                      {COPY.dashboardMorning.timetableTitle}
+                    </h3>
+                    <Link
+                      href="/adult/planner"
+                      className="text-xs font-semibold text-indigo hover:underline"
+                    >
+                      {COPY.dashboardMorning.timetableLink}
+                    </Link>
+                  </div>
+
+                  {/* List of 3 blocks */}
+                  <div className="space-y-2.5">
+                    {timetable.slice(0, 3).map((block) => (
+                      <div
+                        key={block.id}
+                        onClick={() => {
+                          startSession(block.id);
+                          router.push('/adult/focus');
+                        }}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                          block.status === 'completed'
+                            ? 'bg-slate-50 border-slate-200 text-slate-500'
+                            : block.status === 'active'
+                            ? 'bg-indigo-light/60 border-indigo text-indigo font-medium shadow-sm'
+                            : 'bg-white border-border hover:border-indigo/40'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          {block.status === 'completed' ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : block.status === 'active' ? (
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo animate-pulse shrink-0" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-textSecondary shrink-0" />
+                          )}
+                          <div>
+                            <h4 className="text-xs font-bold">{block.title}</h4>
+                            <p className="text-[11px] opacity-75">{block.timeRange}</p>
+                          </div>
+                        </div>
+
+                        <PlayCircle className="w-4 h-4 text-indigo hover:scale-110 transition-transform" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mt-4 pt-3 border-t border-border space-y-1.5">
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-indigo h-full rounded-full transition-all duration-500"
+                      style={{ width: `${(completedBlocks / totalBlocks) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-textSecondary text-right font-medium">
+                    {completedBlocks} of {totalBlocks} blocks completed
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Middle Row: Concentration Trend Chart (Left) + Stat Cards Stacked (Right) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Weekly Concentration Trend Chart (8 cols) */}
+              <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-bold text-textPrimary">
+                      {COPY.dashboardMorning.trendTitle}
+                    </h3>
+                    <p className="text-xs text-textSecondary">
+                      {COPY.dashboardMorning.trendSubtitle}
+                    </p>
+                  </div>
+
+                  <select className="px-3 py-1.5 bg-slate-50 border border-border rounded-xl text-xs font-semibold text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo">
+                    <option>Last 7 Days</option>
+                    <option>Last 14 Days</option>
+                    <option>Last 30 Days</option>
+                  </select>
+                </div>
+
+                {/* Recharts Area Chart */}
+                <div className="h-64 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={WEEKLY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="indigoGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} domain={[60, 100]} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="score"
+                        stroke="#4F46E5"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#indigoGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Stacked Stat Cards Right (4 cols) */}
+              <div className="lg:col-span-4 flex flex-col space-y-6 justify-between">
+                <StatCard
+                  title={COPY.dashboardMorning.statStudyHours}
+                  value="32.4h"
+                  trend={{ value: "12%", isUp: true }}
+                  subtitle="Target: 35.0h / week"
+                  className="flex-1"
+                />
+
+                <StatCard
+                  title={COPY.dashboardMorning.statDeepSessions}
+                  value="14"
+                  trend={{ value: "2", isUp: false }}
+                  subtitle="Average length: 45 min"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            {/* Bottom Wide Ergonomic Pro Tip Card */}
+            <div className="bg-indigo-light/50 rounded-2xl p-6 border border-indigo/20 shadow-card flex flex-col md:flex-row items-center gap-6">
+              <div className="w-full md:w-64 h-40 rounded-xl overflow-hidden shadow-sm shrink-0 relative bg-slate-200">
+                <img
+                  src="https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=600&auto=format&fit=crop&q=80"
+                  alt="Workspace setup"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="space-y-3 flex-1">
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo text-white shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-300" />
+                  <span>{COPY.dashboardMorning.proTipBadge}</span>
+                </div>
+
+                <h3 className="text-lg font-bold text-textPrimary">
+                  {COPY.dashboardMorning.proTipTitle}
+                </h3>
+
+                <p className="text-xs text-textSecondary leading-relaxed">
+                  {COPY.dashboardMorning.proTipBody}
+                </p>
+
+                <button className="py-2.5 px-5 bg-indigo text-white text-xs font-semibold rounded-xl hover:bg-indigo-dark transition-all shadow-md active:scale-95 cursor-pointer">
+                  {COPY.dashboardMorning.proTipBtn}
                 </button>
               </div>
-
-              {/* Items List */}
-              <div className="space-y-3">
-                <div className="bg-slate-50/50 rounded-2xl p-3 flex items-center justify-between border border-slate-100/50">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-teal-50 text-teal-600 p-2 rounded-xl">
-                      <Clock className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">Deep Work: History</h4>
-                      <span className="text-[9px] font-semibold text-slate-400">08:00 AM - 09:30 AM</span>
-                    </div>
-                  </div>
-                  <CheckCircle className="h-5 w-5 text-emerald-500 fill-emerald-50" />
-                </div>
-
-                <div className="bg-slate-50/50 rounded-2xl p-3 flex items-center justify-between border border-indigo-600/20">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-indigo-50 text-indigo-600 p-2 rounded-xl">
-                      <Brain className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-indigo-600">Advanced Math</h4>
-                      <span className="text-[9px] font-semibold text-slate-400">10:00 AM - 11:30 AM</span>
-                    </div>
-                  </div>
-                  <Circle className="h-5 w-5 text-indigo-600 fill-indigo-50 stroke-[3]" />
-                </div>
-
-                <div className="bg-slate-50/50 rounded-2xl p-3 flex items-center justify-between border border-slate-100/50">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-amber-50 text-amber-700 p-2 rounded-xl">
-                      <Clock className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">Language Lab</h4>
-                      <span className="text-[9px] font-semibold text-slate-400">01:00 PM - 02:00 PM</span>
-                    </div>
-                  </div>
-                  <Clock className="h-5 w-5 text-slate-300" />
-                </div>
-              </div>
-            </div>
-
-            {/* Timetable completion progress */}
-            <div className="space-y-1.5 pt-4">
-              <div className="w-full bg-slate-100 rounded-full h-1.5">
-                <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: '33%' }}></div>
-              </div>
-              <span className="text-[10px] font-semibold text-slate-400 block text-right">
-                1 of 3 blocks completed
-              </span>
             </div>
           </div>
-
-          {/* Weekly Concentration Trend Chart (Col span 7) */}
-          <div className="col-span-12 md:col-span-7 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
-            <div className="flex justify-between items-center">
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold text-slate-800">Weekly Concentration Trend</h3>
-                <p className="text-xs text-slate-400 font-semibold">Your peak focus hours over the last 7 days.</p>
-              </div>
-              <select className="border border-slate-200 rounded-xl text-xs font-bold py-1.5 px-3 bg-white text-slate-500 outline-none">
-                <option>Last 7 Days</option>
-              </select>
-            </div>
-
-            <div className="h-[180px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockWeeklyTrend}>
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} fontWeight={700} axisLine={false} tickLine={false} />
-                  <Tooltip />
-                  <Bar dataKey="score" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={28} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Total Study Hours & Deep Sessions stats (Col span 5) */}
-          <div className="col-span-12 md:col-span-5 flex flex-col gap-5">
-            
-            {/* Total Study Hours */}
-            <div className="rounded-[32px] border border-slate-200 bg-indigo-50/40 p-6 shadow-sm flex items-center justify-between flex-1">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
-                  Total Study Hours
-                </span>
-                <div className="text-3xl font-extrabold text-slate-800">32.4h</div>
-              </div>
-              <span className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-bold py-1 px-3 rounded-full flex items-center gap-1">
-                <ArrowUpRight className="h-3 w-3" />
-                12%
-              </span>
-            </div>
-
-            {/* Deep Sessions */}
-            <div className="rounded-[32px] border border-slate-200 bg-indigo-50/40 p-6 shadow-sm flex items-center justify-between flex-1">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
-                  Deep Sessions
-                </span>
-                <div className="text-3xl font-extrabold text-slate-800">14</div>
-              </div>
-              <span className="bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-bold py-1 px-3 rounded-full flex items-center gap-1">
-                <ArrowDownRight className="h-3 w-3" />
-                2
-              </span>
-            </div>
-          </div>
-
-          {/* Pro Tip Banner Card (Col span 12) */}
-          <div className="col-span-12 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm grid grid-cols-12 gap-6 items-center">
-            
-            {/* Desktop illustration styled in CSS/Bento */}
-            <div className="col-span-12 md:col-span-4 bg-slate-50 border border-slate-200/60 rounded-2xl h-[160px] flex items-center justify-center p-4 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent"></div>
-              {/* Simple stylized desk SVG */}
-              <svg className="w-32 h-24 text-slate-400 relative z-10" fill="none" viewBox="0 0 100 80">
-                <rect x="15" y="45" width="70" height="4" rx="2" fill="#94a3b8" />
-                <line x1="20" y1="49" x2="20" y2="70" stroke="#94a3b8" strokeWidth="3" />
-                <line x1="80" y1="49" x2="80" y2="70" stroke="#94a3b8" strokeWidth="3" />
-                {/* Laptop */}
-                <rect x="35" y="32" width="30" height="13" rx="1.5" fill="#64748b" />
-                <line x1="30" y1="45" x2="70" y2="45" stroke="#475569" strokeWidth="2.5" />
-                {/* Lamp */}
-                <path d="M 75 45 L 75 25 L 70 25" stroke="#cbd5e1" strokeWidth="2" />
-                <circle cx="70" cy="25" r="4" fill="#fbbf24" />
-              </svg>
-            </div>
-
-            {/* Pro Tip details */}
-            <div className="col-span-12 md:col-span-8 space-y-4">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50 border border-indigo-100 py-1.5 px-3.5 rounded-full w-fit block">
-                Pro Tip
-              </span>
-              <h3 className="text-xl font-bold text-slate-800 leading-snug">
-                Optimize your environment for cognitive comfort.
-              </h3>
-              <p className="text-xs text-slate-400 font-semibold leading-relaxed">
-                Recent data shows your focus is 15% higher when you work in naturally lit environments. Consider taking your "Deep Work: History" session near a window today.
+        ) : (
+          /* --- EVENING REFLECTION VIEW (Matching Image 1) --- */
+          <div className="space-y-6">
+            {/* Header Info */}
+            <div className="space-y-1">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary tracking-tight">
+                {COPY.dashboardEvening.heading}
+              </h1>
+              <p className="text-sm text-textSecondary font-normal">
+                {COPY.dashboardEvening.subheading}
               </p>
-              
-              <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 px-6 rounded-xl transition-all shadow-sm cursor-pointer">
-                Explore Ergonomic Guides
-              </button>
+            </div>
+
+            {/* Weekly Goal Completion Card */}
+            <div className="bg-white rounded-2xl p-6 border border-border shadow-card space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-textSecondary uppercase tracking-wider">
+                  {COPY.dashboardEvening.goalTitle}
+                </span>
+                <span className="text-base font-extrabold text-indigo">82%</span>
+              </div>
+
+              {/* Solid Blue Horizontal Progress Bar */}
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-indigo h-full rounded-full transition-all duration-700"
+                  style={{ width: '82%' }}
+                />
+              </div>
+
+              {/* Day Dot Indicators */}
+              <div className="flex justify-between items-center pt-2">
+                {weekDays.map((day, idx) => {
+                  const isDone = idx <= 3; // Mon, Tue, Wed, Thu
+                  return (
+                    <div key={day} className="flex flex-col items-center space-y-1.5">
+                      <span className="text-[10px] font-bold text-textSecondary">{day}</span>
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isDone ? 'bg-indigo' : 'bg-slate-300'
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Daily Tasks Checklist (7 cols) */}
+              <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-4 mb-4">
+                    <h3 className="text-base font-bold text-textPrimary">
+                      {COPY.dashboardEvening.tasksTitle}
+                    </h3>
+                    <span className="text-xs font-bold text-textSecondary">
+                      {completedTasksCount} of {totalTasksCount} completed
+                    </span>
+                  </div>
+
+                  {/* Checklist items */}
+                  <div className="space-y-3">
+                    {dailyTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        onClick={() => toggleTask(task.id)}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center space-x-3.5 ${
+                          task.completed
+                            ? 'bg-white border-border text-slate-400'
+                            : 'bg-white border-border hover:border-indigo/40 text-textPrimary'
+                        }`}
+                      >
+                        <button className="shrink-0 cursor-pointer">
+                          {task.completed ? (
+                            <div className="w-5 h-5 rounded-md bg-indigo text-white flex items-center justify-center text-xs font-bold">
+                              ✓
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-md border-2 border-slate-300" />
+                          )}
+                        </button>
+
+                        <div className="flex-1">
+                          <h4 className={`text-sm font-bold ${task.completed ? 'line-through text-slate-400' : 'text-textPrimary'}`}>
+                            {task.title}
+                          </h4>
+                          {task.subtitle && (
+                            <p className={`text-xs mt-0.5 ${task.completed ? 'line-through text-slate-400' : 'text-textSecondary'}`}>
+                              {task.subtitle}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add custom task affordance */}
+                <div className="mt-6 pt-4 border-t border-border/60">
+                  {showAddForm ? (
+                    <form onSubmit={handleAddNewTask} className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        placeholder="Task title..."
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                        autoFocus
+                      />
+                      <button
+                        type="submit"
+                        className="py-2 px-4 bg-indigo text-white text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Add
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => setShowAddForm(true)}
+                      className="text-xs font-bold text-indigo hover:underline flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{COPY.dashboardEvening.addTaskBtn}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column (5 cols) */}
+              <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
+                {/* Well Done! Card */}
+                <div className="bg-indigo text-white rounded-2xl p-6 shadow-md space-y-4">
+                  <h3 className="text-xl font-bold">{COPY.dashboardEvening.wellDoneTitle}</h3>
+                  <p className="text-xs text-white/90 leading-relaxed font-normal">
+                    {COPY.dashboardEvening.wellDoneBody}
+                  </p>
+
+                  {/* Stat pair */}
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <span className="text-[10px] text-white/70 font-bold uppercase block">FOCUS SCORE</span>
+                      <span className="text-2xl font-black mt-0.5 block">94</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-white/70 font-bold uppercase block">EFFICIENCY</span>
+                      <span className="text-2xl font-black mt-0.5 block">+12%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Daily Reflection Textarea Card */}
+                <div className="bg-white rounded-2xl p-6 border border-border shadow-card space-y-3">
+                  <h3 className="text-xs font-bold text-textPrimary">
+                    {COPY.dashboardEvening.reflectionTitle}
+                  </h3>
+                  <textarea
+                    rows={4}
+                    value={reflectionText}
+                    onChange={(e) => setReflectionText(e.target.value)}
+                    placeholder={COPY.dashboardEvening.reflectionPlaceholder}
+                    className="w-full p-3.5 bg-indigo-light/30 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo transition-all resize-none font-medium"
+                  />
+                </div>
+
+                {/* Teal Pro Tip Card with Pinned Save & Update Plan Button */}
+                <div className="relative">
+                  <div className="bg-teal-light/80 border border-teal/30 rounded-2xl p-5 shadow-sm space-y-2 pr-28">
+                    <div className="flex items-center space-x-2 text-teal-900 font-bold text-xs">
+                      <Lightbulb className="w-4 h-4 text-teal" />
+                      <span>{COPY.dashboardEvening.proTipTitle}</span>
+                    </div>
+                    <p className="text-[11px] text-teal-800 leading-tight">
+                      {COPY.dashboardEvening.proTipBody}
+                    </p>
+                  </div>
+
+                  {/* Pinned Action Button */}
+                  <button
+                    onClick={handleSaveReflection}
+                    disabled={isSavingReflection}
+                    className="absolute -bottom-3 right-3 py-3 px-6 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center space-x-2 z-10 cursor-pointer"
+                  >
+                    {isSavingReflection ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>{COPY.dashboardEvening.saveBtn}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+        )}
 
-        </div>
-      </main>
-
-      {/* Floating Timer Button */}
-      <button
-        onClick={() => router.push('/adult/focus')}
-        className="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition-transform hover:scale-105 cursor-pointer z-50"
-      >
-        <Timer className="h-6 w-6" />
-      </button>
+        {/* Floating Circular Timer Button (Bottom-Right) */}
+        <button
+          onClick={() => {
+            const firstUpcoming = timetable.find((b) => b.status === 'active') || timetable[0];
+            if (firstUpcoming) {
+              startSession(firstUpcoming.id);
+              router.push('/adult/focus');
+            }
+          }}
+          className="fixed bottom-8 right-8 w-14 h-14 bg-indigo text-white rounded-full shadow-2xl hover:bg-indigo-dark hover:scale-110 active:scale-95 transition-all flex items-center justify-center z-40 group cursor-pointer"
+          title="Start Active Study Session"
+        >
+          <Timer className="w-7 h-7 group-hover:rotate-12 transition-transform" />
+        </button>
+      </PageContainer>
     </div>
   );
 }

@@ -1,186 +1,171 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { useAuthStore } from '@/store/authStore';
-import { useTabTracker } from '@/hooks/useTabTracker';
-import { apiRequest } from '@/lib/api';
-import {
-  Brain,
-  LogOut,
-  CheckCircle,
-  Pause,
-  Play,
-  Cpu,
-  User,
-  Users
-} from 'lucide-react';
+import { Layers, LogOut, CheckCircle2, Pause, Play, Brain, User, Smile, Users } from 'lucide-react';
+import { useFocusStore } from '@/store/useFocusStore';
+import { COPY } from '@/constants/copy';
+import { focusApi } from '@/services/focusApi';
 
-export default function FocusTimer() {
+export default function AdultFocusSessionPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  
-  // Track tab switches and trigger locking
-  useTabTracker();
+  const blockId = 'block-1';
 
-  const [secs, setSecs] = useState(1453); // 24:13 (1453 seconds)
-  const [isRunning, setIsRunning] = useState(true);
-  const [activeSession, setActiveSession] = useState<any>(null);
-
-  useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-    }
-  }, [user]);
+  const {
+    activeSession,
+    startSession,
+    pauseSession,
+    resumeSession,
+    endSession,
+    tickSession,
+  } = useFocusStore();
 
   useEffect(() => {
-    let t: any = null;
-    if (isRunning && secs > 0) {
-      t = setInterval(() => setSecs(prev => prev - 1), 1000);
+    if (!activeSession.blockId) {
+      startSession(blockId, 25);
     }
-    return () => clearInterval(t);
-  }, [isRunning, secs]);
 
-  const handleComplete = async () => {
-    try {
-      await apiRequest('/api/focus/session/end/', { method: 'POST' });
-      alert('Focus session completed successfully! Great job!');
-      router.push('/adult/dashboard');
-    } catch (err) {
-      console.error(err);
-      router.push('/adult/dashboard');
-    }
+    const interval = setInterval(() => {
+      tickSession();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [blockId]);
+
+  const remainingSeconds = Math.max(activeSession.totalSeconds - activeSession.elapsedSeconds, 0);
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  const progressPct = Math.round((activeSession.elapsedSeconds / (activeSession.totalSeconds || 1)) * 100);
+
+  const handleMarkComplete = async () => {
+    await focusApi.endSession(blockId);
+    endSession();
+    router.push('/adult/dashboard');
   };
-
-  const handlePauseToggle = () => {
-    setIsRunning(!isRunning);
-  };
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${m.toString().padStart(2, '0')}:${r.toString().padStart(2, '0')}`;
-  };
-
-  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50/60 text-slate-800 flex flex-col justify-between p-8 font-sans antialiased relative">
+    <div className="min-h-screen bg-bg flex flex-col justify-between relative overflow-hidden font-sans antialiased text-textPrimary">
       
-      {/* Background circle blobs */}
-      <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-indigo-100 opacity-40 blur-3xl -z-10 transform translate-x-20 -translate-y-20"></div>
+      {/* Decorative Soft Indigo Blob Top-Right */}
+      <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-light/90 rounded-full blur-2xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        {/* Logo */}
-          <div className="flex items-center gap-2">
-            <img
-              src="/focuspath_logo.png"
-              alt="FocusPath Logo"
-              className="h-10 w-auto object-contain"
-            />
-            <span className="font-bold text-base text-slate-800 tracking-tight">FocusPath</span>
-          </div>
+      <header className="w-full bg-transparent sticky top-0 z-40">
+        <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/adult/dashboard" className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo flex items-center justify-center text-white shadow-md">
+              <Layers className="w-4 h-4" />
+            </div>
+            <span className="text-lg font-bold text-indigo tracking-tight">FocusPath</span>
+          </Link>
 
-        {/* Exit Session */}
-        <button
-          onClick={() => router.push('/adult/dashboard')}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-700 bg-white border border-slate-200 py-2.5 px-5 rounded-full font-semibold text-xs transition-all cursor-pointer shadow-sm"
-        >
-          <LogOut className="h-4 w-4" />
-          Exit Session
-        </button>
-      </div>
-
-      {/* Main Focus Center */}
-      <div className="flex flex-col items-center justify-center space-y-6 max-w-xl mx-auto w-full">
-        
-        {/* Focus Active Badge */}
-        <span className="bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-bold py-1.5 px-4 rounded-full flex items-center gap-1.5 shadow-sm">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping"></span>
-          FOCUS TRACKING ACTIVE
-        </span>
-
-        {/* Current subject details */}
-        <div className="text-center space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-            CURRENT SESSION
-          </span>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-tight">
-            Advanced Mathematics II – Linear Algebra
-          </h2>
+          <button
+            onClick={() => router.push('/adult/planner')}
+            className="flex items-center space-x-1.5 text-xs font-semibold text-textPrimary hover:text-danger transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{COPY.session.exit}</span>
+          </button>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-xl mx-auto px-6 py-8 flex-1 flex flex-col items-center justify-center text-center z-10 w-full">
+        
+        {/* Active Badge */}
+        <div className="inline-flex items-center space-x-2 bg-indigo-light text-indigo font-bold text-[11px] uppercase tracking-wider px-3.5 py-1.5 rounded-full mb-6">
+          <span className="w-2 h-2 rounded-full bg-indigo animate-pulse" />
+          <span>{COPY.session.badge}</span>
+        </div>
+
+        {/* Current Session Labels */}
+        <span className="text-[11px] font-extrabold text-textSecondary uppercase tracking-widest block mb-1">
+          {COPY.session.label}
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-textPrimary tracking-tight mb-8">
+          {COPY.session.title}
+        </h1>
 
         {/* Timer Card */}
-        <div className="w-full bg-white rounded-[32px] border border-slate-200/80 p-10 shadow-sm flex flex-col items-center justify-center gap-6">
-          <div className="text-8xl font-semibold tracking-tighter text-indigo-600 font-mono">
-            {formatTime(secs)}
-          </div>
+        <div className="w-full bg-white rounded-3xl p-8 sm:p-10 border border-border shadow-xl space-y-6">
           
-          {/* Progress Indicator */}
-          <div className="w-full space-y-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5">
-              <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: '81%' }}></div>
+          {/* Digits Display */}
+          <div className="text-7xl sm:text-8xl font-black text-indigo tracking-tight font-mono">
+            {formattedTime}
+          </div>
+
+          {/* Progress Bar & Label Pair */}
+          <div className="space-y-2 pt-2">
+            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-indigo h-full rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
-            <div className="flex justify-between text-[10px] font-bold text-slate-400">
+            <div className="flex justify-between text-[11px] font-bold text-textSecondary">
               <span>Progress</span>
-              <span>81% Complete</span>
+              <span>{progressPct}% Complete</span>
             </div>
+          </div>
+
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-center space-x-4 mt-6 w-full max-w-sm">
+          <button
+            onClick={handleMarkComplete}
+            className="flex-1 py-3.5 px-6 bg-indigo text-white font-bold text-xs rounded-2xl hover:bg-indigo-dark transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            <span>{COPY.session.completeBtn}</span>
+          </button>
+
+          {activeSession.isRunning ? (
+            <button
+              onClick={pauseSession}
+              className="py-3.5 px-6 bg-white border border-border text-textPrimary font-bold text-xs rounded-2xl hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <Pause className="w-4 h-4 text-textSecondary" />
+              <span>{COPY.session.pauseBtn}</span>
+            </button>
+          ) : (
+            <button
+              onClick={resumeSession}
+              className="py-3.5 px-6 bg-teal text-white font-bold text-xs rounded-2xl hover:bg-teal-600 transition-all shadow-md active:scale-95 flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <Play className="w-4 h-4" />
+              <span>{COPY.session.resumeBtn}</span>
+            </button>
+          )}
+        </div>
+
+      </main>
+
+      {/* Bottom-Right BRAIN STATE Mini Card & Icon Pill */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end space-y-3 hidden sm:flex">
+        {/* Brain State Card */}
+        <div className="bg-white rounded-2xl p-4 border border-border shadow-lg flex items-center space-x-3">
+          <div>
+            <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">
+              {COPY.session.brainStateTitle}
+            </span>
+            <span className="text-xs font-bold text-textPrimary">
+              {COPY.session.brainStateValue}
+            </span>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-teal-light text-teal flex items-center justify-center">
+            <Brain className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleComplete}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3.5 px-6 rounded-2xl transition-all shadow-sm cursor-pointer"
-          >
-            <CheckCircle className="h-4.5 w-4.5" />
-            Mark Complete
-          </button>
-          
-          <button
-            onClick={handlePauseToggle}
-            className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs py-3.5 px-6 rounded-2xl transition-all shadow-sm cursor-pointer"
-          >
-            {isRunning ? (
-              <>
-                <Pause className="h-4.5 w-4.5" />
-                Pause Session
-              </>
-            ) : (
-              <>
-                <Play className="h-4.5 w-4.5 fill-slate-700" />
-                Resume Session
-              </>
-            )}
-          </button>
-        </div>
-
-      </div>
-
-      {/* Footer / Status Indicators */}
-      <div className="flex justify-between items-end">
-        <div></div>
-        
-        <div className="flex flex-col items-end gap-3">
-          {/* Brain State Indicator */}
-          <div className="bg-teal-50/50 border border-teal-100 rounded-2xl p-3.5 flex items-center gap-3 shadow-sm">
-            <div>
-              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">BRAIN STATE</span>
-              <h4 className="text-xs font-bold text-slate-800">Deep Work Stage 2</h4>
-            </div>
-            <div className="bg-teal-100/50 text-teal-600 p-2 rounded-xl">
-              <Cpu className="h-5 w-5" />
-            </div>
-          </div>
-
-          {/* Users selectors pill */}
-          <div className="bg-slate-100 border border-slate-200/60 p-1.5 rounded-full flex gap-1 shadow-sm">
-            <button className="bg-indigo-600 text-white p-1 rounded-full"><User className="h-3.5 w-3.5" /></button>
-            <button className="text-slate-400 p-1 rounded-full"><Users className="h-3.5 w-3.5" /></button>
-          </div>
+        {/* 3 Icon Pill */}
+        <div className="bg-indigo-light/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-indigo/20 flex items-center space-x-3 text-indigo">
+          <User className="w-4 h-4" />
+          <Smile className="w-4 h-4" />
+          <Users className="w-4 h-4" />
         </div>
       </div>
 
