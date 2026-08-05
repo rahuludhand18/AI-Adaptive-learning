@@ -1,251 +1,229 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { useAuthStore } from '@/store/authStore';
-import { useTabTracker } from '@/hooks/useTabTracker';
-import {
-  Brain,
-  Bell,
-  Settings,
-  Flame,
-  ArrowUpRight,
-  TrendingUp,
-  Sparkles,
-  Cpu,
-  ArrowRight
-} from 'lucide-react';
+import React, { useState } from 'react';
+import Link from 'next/link';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { TopNav } from '@/components/layout/TopNav';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { StatCard } from '@/components/ui/StatCard';
+import { COPY } from '@/constants/copy';
+import { SUBJECT_COMPLETIONS } from '@/services/focusApi';
+import { Flame, Sparkles, Clock, ArrowRight, TrendingUp, Cpu } from 'lucide-react';
 
-const mockTrendData = [
-  { name: 'Day 1', score: 30 },
-  { name: 'Day 5', score: 45 },
-  { name: 'Day 10', score: 40 },
-  { name: 'Day 15', score: 55 },
-  { name: 'Day 20', score: 42 },
-  { name: 'Day 25', score: 85 },
-  { name: 'Today', score: 60 },
+const INSIGHTS_TREND = [
+  { day: 'Day 1', score: 68 },
+  { day: 'Day 5', score: 76 },
+  { day: 'Day 10', score: 82 },
+  { day: 'Day 15', score: 74 },
+  { day: 'Day 20', score: 89 },
+  { day: 'Day 25', score: 96 },
+  { day: 'Today', score: 94 },
 ];
 
-export default function PerformanceAnalytics() {
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
-  
-  // Track browser focus
-  useTabTracker();
-
-  if (!user) return null;
+export default function AdultAnalyticsPage() {
+  const [timeframe, setTimeframe] = useState('Last 30 Days');
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans antialiased text-slate-800">
-      
-      {/* Top Navbar */}
-      <header className="border-b border-slate-100 bg-white sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src="/focuspath_logo.png"
-              alt="FocusPath Logo"
-              className="h-10 w-auto object-contain"
-            />
-            <span className="font-bold text-base text-slate-800 tracking-tight">FocusPath</span>
-          </div>
+    <div className="min-h-screen bg-bg flex flex-col font-sans antialiased text-textPrimary">
+      <TopNav />
 
-          <nav className="flex items-center gap-8 h-full">
-            <button onClick={() => router.push('/adult/dashboard')} className="h-16 flex items-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 cursor-pointer">
-              Dashboard
-            </button>
-            <button onClick={() => router.push('/adult/planner')} className="h-16 flex items-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 cursor-pointer">
-              Schedule
-            </button>
-            <button className="h-16 flex items-center text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 px-1 cursor-pointer">
-              Insights
-            </button>
-            <button onClick={() => router.push('/adult/reports')} className="h-16 flex items-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 cursor-pointer">
-              Community
-            </button>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <button className="text-slate-400 hover:text-slate-600 cursor-pointer">
-              <Bell className="h-5 w-5" />
-            </button>
-            <button onClick={() => router.push('/parent/restrictions')} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-              <Settings className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={() => { logout(); router.push('/auth/login'); }}
-              className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 cursor-pointer"
-            >
-              {user.username.slice(0,2).toUpperCase()}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="mx-auto max-w-7xl space-y-6 p-6">
-        
-        {/* Title */}
-        <div className="flex justify-between items-end">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block">
+      <PageContainer>
+        {/* Top Eyebrow & Heading Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div>
+            <span className="text-[11px] font-extrabold text-indigo uppercase tracking-widest block mb-1">
               ADULT MODE • ANALYTICS
             </span>
-            <h2 className="text-2xl font-bold text-slate-900">Performance Deep-Dive</h2>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary tracking-tight">
+              Performance Deep-Dive
+            </h1>
           </div>
-          
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <span>Timeframe:</span>
-            <select className="border border-slate-200 rounded-xl text-xs font-bold py-1.5 px-3 bg-white text-slate-500 outline-none">
+
+          {/* Timeframe Dropdown */}
+          <div className="flex items-center space-x-2 text-xs font-semibold text-textSecondary bg-white px-3.5 py-2 rounded-xl border border-border shadow-sm self-start sm:self-auto">
+            <span>Timeframe :</span>
+            <select
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value)}
+              className="font-bold text-textPrimary bg-transparent focus:outline-none cursor-pointer"
+            >
               <option>Last 30 Days</option>
+              <option>Last 7 Days</option>
+              <option>Last 90 Days</option>
             </select>
           </div>
         </div>
 
-        {/* Top 3 Cards Row */}
-        <div className="grid grid-cols-12 gap-5">
+        {/* Row of 3 Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Card 1: Total Deep Work (Col 3) */}
-          <div className="col-span-12 md:col-span-3 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between min-h-[140px]">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Deep Work
-            </span>
-            <div className="space-y-1">
-              <div className="text-4xl font-extrabold text-slate-800">124h</div>
-              <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-1">
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                12% from last month
-              </span>
-            </div>
-          </div>
+          {/* Card 1: Total Deep Work */}
+          <StatCard
+            title="Total Deep Work"
+            value="124h"
+            trend={{ value: "12% from last month", isUp: true }}
+          />
 
-          {/* Card 2: Avg Daily Focus (Col 3) */}
-          <div className="col-span-12 md:col-span-3 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between min-h-[140px]">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Avg. Daily Focus
-            </span>
-            <div className="space-y-1">
-              <div className="text-4xl font-extrabold text-slate-800">4.2h</div>
-              <span className="text-[9px] font-semibold text-slate-400 block">
-                ⏱ Peak performance: 10AM
-              </span>
-            </div>
-          </div>
+          {/* Card 2: Avg. Daily Focus */}
+          <StatCard
+            title="Avg. Daily Focus"
+            value="4.2h"
+            subtitle="⏱ Peak performance: 10AM"
+          />
 
-          {/* Card 3: 14 Day Streak Card (Col 6) */}
-          <div className="col-span-12 md:col-span-6 rounded-[32px] border border-transparent bg-indigo-600 text-white p-6 shadow-sm flex items-center justify-between min-h-[140px] relative overflow-hidden">
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 flex items-center justify-center">
-              <Settings className="w-32 h-32 text-white" />
+          {/* Card 3: 14 Day Streak Card */}
+          <div className="bg-indigo text-white rounded-2xl p-6 shadow-md flex flex-col justify-between relative overflow-hidden">
+            {/* Gear/Brain outline decorative background */}
+            <div className="absolute -right-6 -bottom-6 w-36 h-36 opacity-15 pointer-events-none">
+              <svg viewBox="0 0 100 100" fill="currentColor">
+                <circle cx="50" cy="50" r="40" stroke="white" strokeWidth="8" fill="none" />
+                <path d="M50 10 L50 90 M10 50 L90 50" stroke="white" strokeWidth="6" />
+              </svg>
             </div>
-            
-            <div className="space-y-3 relative z-10">
-              <div className="flex items-center gap-2">
-                <Flame className="h-6 w-6 text-white fill-white" />
-                <span className="text-lg font-bold">14 Day Streak</span>
+
+            <div className="flex items-center space-x-3 z-10">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                <Flame className="w-5 h-5 text-amber-300" />
               </div>
-              <p className="text-xs text-white/80 font-semibold leading-relaxed max-w-sm">
-                You're in the top 5% of learners this week. Keep the momentum going!
+              <h3 className="text-lg font-extrabold tracking-tight">14 Day Streak</h3>
+            </div>
+
+            <p className="text-xs text-white/90 leading-relaxed mt-4 max-w-xs z-10">
+              You're in the top 5% of learners this week. Keep the momentum going!
+            </p>
+          </div>
+
+        </div>
+
+        {/* Focus Score Trend Line Chart Card */}
+        <div className="bg-white rounded-2xl p-6 border border-border shadow-card space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-textPrimary">
+                Focus Score Trend
+              </h3>
+              <p className="text-xs text-textSecondary">
+                Measured peak cognitive state performance
               </p>
             </div>
-          </div>
 
-          {/* Wave Chart: Focus Score Trend (Col span 12) */}
-          <div className="col-span-12 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
-            <div className="flex justify-between items-center">
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold text-slate-800">Focus Score Trend</h3>
-                <p className="text-xs text-slate-400 font-semibold">Measured peak cognitive state performance</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-                <span>Focus Index</span>
-              </div>
-            </div>
-
-            <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockTrendData}>
-                  <defs>
-                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} fontWeight={600} axisLine={false} tickLine={false} />
-                  <YAxis hide />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={3.5} fillOpacity={1} fill="url(#colorScore)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            {/* Legend dot */}
+            <div className="flex items-center space-x-2 text-xs font-semibold text-textPrimary">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo inline-block" />
+              <span>Focus Index</span>
             </div>
           </div>
 
-          {/* Subject-wise Completion (Col span 7) */}
-          <div className="col-span-12 md:col-span-7 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
-            <h3 className="text-lg font-bold text-slate-800">Subject-wise Completion</h3>
-            
-            <div className="space-y-4">
-              {[
-                { name: 'Mathematics', percent: 82 },
-                { name: 'Cognitive Psychology', percent: 64 },
-                { name: 'Data Science', percent: 41 },
-                { name: 'Behavioral Economics', percent: 92 },
-              ].map((sub, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold text-slate-700">
-                    <span>{sub.name}</span>
-                    <span>{sub.percent}%</span>
+          {/* Smooth Recharts Curve */}
+          <div className="h-64 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={INSIGHTS_TREND} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="purpleGlow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="0" vertical={false} stroke="#F8FAFC" />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} tick={false} domain={[50, 100]} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#3730A3"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#purpleGlow)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Bottom Row: Subject-wise Completion (Left) vs Focus AI Suggestion & Next Up (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Subject-wise Completion (7 cols) */}
+          <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-border shadow-card space-y-6">
+            <h3 className="text-base font-bold text-textPrimary">
+              Subject-wise Completion
+            </h3>
+
+            <div className="space-y-5 pt-1">
+              {SUBJECT_COMPLETIONS.map((item) => (
+                <div key={item.subject} className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-textPrimary">
+                    <span>{item.subject}</span>
+                    <span className="text-indigo">{item.percentage}%</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${sub.percent}%` }}></div>
+                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-indigo h-full rounded-full transition-all duration-700"
+                      style={{ width: `${item.percentage}%` }}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Focus AI Suggestion & Next Up (Col span 5) */}
-          <div className="col-span-12 md:col-span-5 flex flex-col gap-5">
+          {/* Right Column: AI Suggestion Card + NEXT UP Card (4 cols) */}
+          <div className="lg:col-span-4 space-y-6 flex flex-col justify-between">
             
-            {/* AI Suggestion Card */}
-            <div className="rounded-[32px] border border-slate-200 bg-indigo-50/50 p-8 shadow-sm flex flex-col justify-between items-center text-center space-y-4 min-h-[220px]">
-              <div className="bg-white p-2.5 rounded-full shadow-sm w-fit border border-indigo-100">
-                <Sparkles className="h-5 w-5 text-indigo-600" />
+            {/* Focus AI Suggestion Card */}
+            <div className="bg-indigo-light/70 rounded-2xl p-6 border border-indigo/20 shadow-sm text-center flex flex-col items-center justify-between min-h-[220px]">
+              <div className="w-10 h-10 rounded-full bg-white text-indigo flex items-center justify-center shadow-sm mb-3">
+                <Sparkles className="w-5 h-5" />
               </div>
-              <div className="space-y-1.5">
-                <h4 className="text-base font-bold text-slate-800">Focus AI Suggestion</h4>
-                <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+
+              <div className="space-y-1 mb-4">
+                <h3 className="text-base font-bold text-textPrimary">
+                  Focus AI Suggestion
+                </h3>
+                <p className="text-xs text-textSecondary leading-relaxed max-w-xs">
                   Based on your trend, morning sessions yield 15% more productivity.
                 </p>
               </div>
-              <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 px-5 rounded-2xl shadow-sm cursor-pointer transition-colors">
+
+              <button
+                onClick={() => alert('Morning Focus Scheduled!')}
+                className="w-full py-3 px-4 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-md active:scale-95 cursor-pointer"
+              >
                 Schedule Morning Focus
               </button>
             </div>
 
-            {/* Next Up Card */}
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-between hover:border-slate-300 transition-all cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="bg-teal-50 text-teal-600 p-3 rounded-2xl">
-                  <Cpu className="h-5 w-5" />
+            {/* NEXT UP Card */}
+            <div className="bg-white rounded-2xl p-5 border border-border shadow-card flex items-center justify-between">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-10 h-10 rounded-xl bg-teal-light text-teal flex items-center justify-center">
+                  <Cpu className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">NEXT UP</span>
-                  <h4 className="text-xs font-bold text-slate-800">Neural Networks Part 2</h4>
-                  <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Starts in 15m</span>
+                  <span className="text-[10px] font-bold text-textSecondary uppercase tracking-wider block">
+                    NEXT UP
+                  </span>
+                  <h4 className="text-xs font-bold text-textPrimary">Neural Networks Part 2</h4>
+                  <p className="text-[11px] text-textSecondary mt-0.5">Starts in 15m</p>
                 </div>
               </div>
-              <ArrowRight className="h-5 w-5 text-slate-400" />
+
+              <Link
+                href="/adult/focus"
+                className="p-2 text-indigo hover:text-indigo-dark transition-colors"
+              >
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </div>
 
           </div>
 
         </div>
-      </main>
 
+      </PageContainer>
     </div>
   );
 }
