@@ -95,7 +95,7 @@ export const TopNav: React.FC = () => {
           </button>
 
           {/* Settings Icon */}
-          <Link href="/parent/restrictions" className="p-2 rounded-xl text-textPrimary hover:bg-indigo-light/50 transition-colors cursor-pointer">
+          <Link href="/adult/settings" className="p-2 rounded-xl text-textPrimary hover:bg-indigo-light/50 transition-colors cursor-pointer" title="Adult Settings">
             <Settings className="w-5 h-5" />
           </Link>
 
@@ -141,15 +141,17 @@ export const TopNav: React.FC = () => {
                   <span>My Profile & Stats</span>
                 </Link>
 
-                {/* Parent Controls Link */}
+                {/* Settings Link */}
                 <Link
-                  href="/parent/restrictions"
+                  href="/adult/settings"
                   onClick={() => setIsDropdownOpen(false)}
                   className="flex items-center space-x-2.5 p-2 rounded-xl text-textPrimary hover:bg-slate-50 transition-colors text-xs font-semibold"
                 >
-                  <Shield className="w-4 h-4 text-textSecondary" />
-                  <span>Parental Controls</span>
+                  <Settings className="w-4 h-4 text-textSecondary" />
+                  <span>Workspace Settings</span>
                 </Link>
+
+
 
                 <div className="border-t border-border/60 my-1" />
 

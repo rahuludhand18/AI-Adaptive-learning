@@ -32,13 +32,25 @@ function LoginContent() {
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Initialize lockout parameters
+  // Initialize lockout & role redirect parameters
   useEffect(() => {
     const lockedParam = searchParams.get('locked');
+    const roleParam = searchParams.get('role');
+    const noticeParam = searchParams.get('notice');
+
     if (lockedParam === 'true') {
       setLocked(true);
       setLoginMode('kid');
       setError('Your account is locked due to excessive tab switching (3). Parent approval is required.');
+    } else if (roleParam === 'PARENT') {
+      setLoginMode('adult');
+      if (noticeParam === 'parent_required') {
+        setError('Parental credentials required. Please sign in with your Parent account to access the Parent Portal.');
+      }
+    } else if (roleParam === 'ADULT') {
+      setLoginMode('adult');
+    } else if (roleParam === 'KID') {
+      setLoginMode('kid');
     }
   }, [searchParams]);
 
