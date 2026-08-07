@@ -48,6 +48,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
+    authentication_classes = ()
     serializer_class = RegisterSerializer
 
 class UserProfileView(generics.RetrieveAPIView):

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/layout/ParentLayout';
 import { useAuthStore } from '@/store/authStore';
+import { apiRequest } from '@/lib/api';
 import {
   User,
   UserPlus,
@@ -23,32 +24,46 @@ export default function ParentAccountPage() {
   const [newKidPassword, setNewKidPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [kids, setKids] = useState<any[]>([]);
 
-  const [kids, setKids] = useState([
-    { id: 1, name: 'Alex', age: '10', status: 'Active', device: 'Samsung Tablet' },
-  ]);
+  const fetchKids = async () => {
+    try {
+      const data = await apiRequest('/api/parents/kids/');
+      setKids(data);
+    } catch (err: any) {
+      console.error('Failed to fetch kids:', err);
+    }
+  };
 
-  const handleAddKid = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchKids();
+  }, []);
+
+  const handleAddKid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKidUsername.trim()) return;
+    if (!newKidUsername.trim() || !newKidPassword.trim()) return;
 
     setLoading(true);
-    setTimeout(() => {
-      setKids((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          name: newKidUsername.trim(),
-          age: '8',
-          status: 'Active',
-          device: 'iPad Air',
-        },
-      ]);
-      setSuccess(`Child account "${newKidUsername}" created and linked to your Parent account.`);
+    setSuccess(null);
+    setError(null);
+    try {
+      const newKid = await apiRequest('/api/parents/kids/', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: newKidUsername.trim(),
+          password: newKidPassword.trim(),
+        }),
+      });
+      setSuccess(`Child account "${newKid.username}" created and linked to your Parent account.`);
       setNewKidUsername('');
       setNewKidPassword('');
+      fetchKids();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create child profile. Username might be already taken or password does not meet security requirements.');
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -72,6 +87,18 @@ export default function ParentAccountPage() {
               <span>{success}</span>
             </div>
             <button onClick={() => setSuccess(null)} className="text-emerald-700 font-bold cursor-pointer">
+              ✕
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-rose-600" />
+              <span>{error}</span>
+            </div>
+            <button onClick={() => setError(null)} className="text-rose-700 font-bold cursor-pointer">
               ✕
             </button>
           </div>
@@ -160,36 +187,46 @@ export default function ParentAccountPage() {
             </div>
 
             <div className="space-y-3">
-              {kids.map((kid) => (
-                <div
-                  key={kid.id}
-                  className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-                      {kid.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">{kid.name}</h4>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        Device: {kid.device}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-100">
-                      {kid.status}
-                    </span>
-                    <button
-                      onClick={() => router.push('/parent/restrictions')}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 p-2 rounded-xl hover:bg-indigo-50 transition-colors cursor-pointer"
-                    >
-                      Configure Restrictions →
-                    </button>
-                  </div>
+              {kids.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400 font-semibold bg-slate-50/40 border border-slate-100/50 rounded-2xl">
+                  No managed child accounts yet. Create one above to get started.
                 </div>
-              ))}
+              ) : (
+                kids.map((kid) => (
+                  <div
+                    key={kid.id}
+                    className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                        {kid.username ? kid.username.charAt(0).toUpperCase() : 'C'}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">{kid.username}</h4>
+                        <p className="text-[10px] text-slate-400 font-medium">
+                          Device: Managed Device
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                        kid.is_locked
+                          ? 'bg-rose-50 text-rose-700 border-rose-100'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      }`}>
+                        {kid.is_locked ? 'Locked' : 'Active'}
+                      </span>
+                      <button
+                        onClick={() => router.push('/parent/restrictions')}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 p-2 rounded-xl hover:bg-indigo-50 transition-colors cursor-pointer"
+                      >
+                        Configure Restrictions →
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
