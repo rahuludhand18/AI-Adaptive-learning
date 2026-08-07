@@ -6,7 +6,7 @@ from datetime import timedelta
 from parents.models import Restriction, ApprovalRequest
 from parents.serializers import RestrictionSerializer, ApprovalRequestSerializer, ResolveApprovalSerializer
 from users.models import User, ParentChildRelation
-from users.serializers import KidCreateSerializer
+from users.serializers import KidCreateSerializer, UserSerializer
 
 class IsParentUser(BasePermission):
     def has_permission(self, request, view):
@@ -56,9 +56,18 @@ class ParentApprovalResolveView(views.APIView):
 
         return Response({"detail": f"Request resolved as {action}."}, status=status.HTTP_200_OK)
 
-class ParentAddKidView(generics.CreateAPIView):
+class ParentKidsView(generics.ListCreateAPIView):
     permission_classes = [IsParentUser]
-    serializer_class = KidCreateSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return KidCreateSerializer
+        return UserSerializer
+
+    def get_queryset(self):
+        parent = self.request.user
+        child_ids = ParentChildRelation.objects.filter(parent=parent).values_list('child_id', flat=True)
+        return User.objects.filter(id__in=child_ids)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

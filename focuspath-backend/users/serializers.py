@@ -47,3 +47,6 @@ class KidCreateSerializer(serializers.ModelSerializer):
         # Create relation
         ParentChildRelation.objects.create(parent=parent, child=user)
         return user
+
+    def to_representation(self, instance):
+        return UserSerializer(instance).data
