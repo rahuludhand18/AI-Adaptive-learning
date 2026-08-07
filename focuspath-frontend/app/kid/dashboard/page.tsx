@@ -134,13 +134,24 @@ export default function KidDashboardPage() {
                 </p>
               </div>
 
-              <button
-                onClick={() => router.push('/kid/stories')}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-3 px-6 rounded-full shadow-md shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
-              >
-                <span>Let's Go!</span>
-                <Rocket className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => router.push('/kid/stories')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-3 px-6 rounded-full shadow-md shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                >
+                  <span>Let's Go!</span>
+                  <Rocket className="h-4 w-4" />
+                </button>
+
+                {/* opens the curated, parent-approved video lessons */}
+                <button
+                  onClick={() => router.push('/kid/learn')}
+                  className="bg-white text-indigo-600 border border-indigo-200 hover:border-indigo-400 font-extrabold text-xs py-3 px-6 rounded-full shadow-2xs flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                >
+                  <span>Learn</span>
+                  <BookOpen className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
           </div>
