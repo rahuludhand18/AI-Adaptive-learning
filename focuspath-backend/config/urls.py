@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/planner/', include('planner.urls')),
     path('api/parents/', include('parents.urls')),
     path('api/rewards/', include('rewards.urls')),
+    path('api/content/', include('content.urls')),
 ]

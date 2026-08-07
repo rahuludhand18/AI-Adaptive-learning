@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'rewards',
     'kids',
     'analytics',
+    'content',
 ]
 
 MIDDLEWARE = [
