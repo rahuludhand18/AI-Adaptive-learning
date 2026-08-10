@@ -44,13 +44,13 @@ export default function RegisterPage() {
       <div className="w-full max-w-[460px] rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
         {/* Logo and Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="flex items-center justify-center">
+          <Link href="/" className="flex items-center justify-center transition-transform hover:scale-105">
             <img
               src="/focuspath_logo.png"
-              alt="FocusPath Logo"
-              className="h-20 w-auto object-contain"
+              alt="FocusPath"
+              className="h-16 w-auto object-contain"
             />
-          </div>
+          </Link>
           <h2 className="text-xl font-bold text-slate-800">Create Your Account</h2>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
             Choose FocusPath Role

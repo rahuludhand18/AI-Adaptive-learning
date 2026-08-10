@@ -50,13 +50,12 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
       <header className="bg-white border-b border-slate-200/80 px-8 h-16 flex items-center justify-between sticky top-0 z-30 shrink-0 shadow-xs">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3">
-          <Link href="/kid/dashboard" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-              <Layers className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-extrabold text-xl text-indigo-600 tracking-tight">
-              FocusPath
-            </span>
+          <Link href="/kid/dashboard" className="flex items-center group">
+            <img
+              src="/focuspath_logo.png"
+              alt="FocusPath"
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
         </div>
 

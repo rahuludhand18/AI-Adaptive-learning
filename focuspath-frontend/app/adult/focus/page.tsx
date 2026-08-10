@@ -55,11 +55,12 @@ export default function AdultFocusSessionPage() {
       {/* Header */}
       <header className="w-full bg-transparent sticky top-0 z-40">
         <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/adult/dashboard" className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo flex items-center justify-center text-white shadow-md">
-              <Layers className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-bold text-indigo tracking-tight">FocusPath</span>
+          <Link href="/adult/dashboard" className="flex items-center group">
+            <img
+              src="/focuspath_logo.png"
+              alt="FocusPath"
+              className="h-8.5 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
 
           <button
