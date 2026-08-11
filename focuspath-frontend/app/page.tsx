@@ -23,11 +23,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#fafbfc] text-slate-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">
-      
+
       {/* 1. TOP NAVBAR */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          
+
           {/* Logo */}
           <Link href="/" className="flex items-center group">
             <Image
@@ -65,30 +65,11 @@ export default function LandingPage() {
 
         {/* 2. HERO SECTION */}
         <section id="product" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* Left Column (Hero Content) */}
           <div className="lg:col-span-7 space-y-6">
-            
-            {/* Mode Switch Pill Badge */}
-            <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-xs text-xs font-semibold text-slate-700">
-              <span className="flex items-center gap-1.5 text-indigo-600">
-                <span className="h-2 w-2 rounded-full bg-indigo-600"></span>
-                Adult
-              </span>
-              <button
-                type="button"
-                onClick={() => setActiveHeroMode(activeHeroMode === 'adult' ? 'kid' : 'adult')}
-                className="w-7 h-4 bg-slate-900 rounded-full flex items-center p-0.5 cursor-pointer transition-colors focus:outline-none"
-                aria-label="Toggle Mode"
-              >
-                <div
-                  className={`w-3 h-3 bg-white rounded-full shadow-xs transition-transform duration-200 ease-in-out ${
-                    activeHeroMode === 'kid' ? 'translate-x-3' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-              <span className="text-slate-500 font-medium">Kid</span>
-            </div>
+
+
 
             {/* Kicker & Main Headline */}
             <div className="space-y-3">
@@ -131,7 +112,7 @@ export default function LandingPage() {
           {/* Right Column (Hero Bento Card) */}
           <div className="lg:col-span-5">
             <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs space-y-6">
-              
+
               {/* Circular Focus Score Meter */}
               <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
                 <div className="relative h-16 w-16 shrink-0 rounded-full border-4 border-indigo-600 flex items-center justify-center bg-indigo-50/20 shadow-xs">
@@ -170,7 +151,7 @@ export default function LandingPage() {
 
         {/* 3. THREE PERSONAS SECTION */}
         <section className="space-y-12">
-          
+
           {/* Section Header */}
           <div className="text-center space-y-2 max-w-2xl mx-auto">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">
@@ -187,7 +168,7 @@ export default function LandingPage() {
 
           {/* Three Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+
             {/* Card 1: Students & Professionals */}
             <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-6">
               <div className="space-y-4">
@@ -239,7 +220,7 @@ export default function LandingPage() {
         {/* 4. ADULT MODE (DARK BENTO SECTION) */}
         <section id="adult-mode" className="rounded-[36px] bg-[#0c1222] text-white p-8 sm:p-12 lg:p-14 shadow-xl relative overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            
+
             {/* Left Content Column */}
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
@@ -290,7 +271,7 @@ export default function LandingPage() {
             {/* Right Card Column */}
             <div className="lg:col-span-5">
               <div className="rounded-3xl bg-[#141b2d] border border-slate-800 p-6 shadow-2xl space-y-4">
-                
+
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
                   <span className="text-xs font-semibold text-slate-400">Weekly Focus Score</span>
                   <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
@@ -323,11 +304,11 @@ export default function LandingPage() {
 
         {/* 5. KID'S MODE SECTION */}
         <section id="kids-mode" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* Left Column (Kid Quests Card) */}
           <div className="lg:col-span-5 order-2 lg:order-1">
             <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs space-y-4">
-              
+
               {/* Pet / Buddy Avatar indicator */}
               <div className="flex items-center gap-2 pb-1">
                 <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm shadow-2xs">
@@ -422,7 +403,7 @@ export default function LandingPage() {
 
         {/* 6. PARENT PORTAL SECTION */}
         <section id="parent-portal" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* Left Column (Parent Description & Feature Stack) */}
           <div className="lg:col-span-7 space-y-6">
             <div className="space-y-2">
@@ -437,7 +418,7 @@ export default function LandingPage() {
 
             {/* 3 Feature cards stack */}
             <div className="space-y-3.5 pt-2">
-              
+
               {/* Feature 1 */}
               <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-2xs flex items-start gap-4">
                 <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
@@ -483,7 +464,7 @@ export default function LandingPage() {
           {/* Right Column (Security Notification Card) */}
           <div className="lg:col-span-5">
             <div className="rounded-3xl bg-[#111625] border border-slate-800 text-white p-6 shadow-2xl space-y-4">
-              
+
               {/* Security Alert Header */}
               <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-wider">
                 <Shield className="h-3.5 w-3.5 fill-rose-400/20" />
@@ -518,7 +499,7 @@ export default function LandingPage() {
 
         {/* 7. GETTING STARTED SECTION (3 STEPS) */}
         <section id="how-it-works" className="space-y-12">
-          
+
           {/* Header */}
           <div className="text-center space-y-2 max-w-xl mx-auto">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">
@@ -532,7 +513,7 @@ export default function LandingPage() {
 
           {/* 3 Step Columns */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
+
             {/* Step 1 */}
             <div className="space-y-3.5">
               <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
@@ -571,7 +552,7 @@ export default function LandingPage() {
 
         {/* 8. BOTTOM CTA BANNER CARD */}
         <section className="rounded-[36px] bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white p-10 sm:p-14 text-center shadow-xl relative overflow-hidden space-y-6">
-          
+
           <div className="space-y-2 max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
               Your plan is about to get a lot harder to break.
@@ -599,9 +580,9 @@ export default function LandingPage() {
       {/* 9. FOOTER */}
       <footer className="border-t border-slate-200/80 bg-white">
         <div className="max-w-6xl mx-auto px-6 py-14 space-y-12">
-          
+
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-            
+
             {/* Column 1: Brand & Tagline */}
             <div className="md:col-span-6 space-y-4">
               <Link href="/" className="inline-block">
@@ -616,7 +597,7 @@ export default function LandingPage() {
               <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
                 Plans that rebuild themselves — for students, kids, and the parents watching over them.
               </p>
-              
+
               <div className="flex flex-col gap-2 pt-2">
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                   LEGAL
