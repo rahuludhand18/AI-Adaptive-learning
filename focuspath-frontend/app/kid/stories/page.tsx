@@ -59,10 +59,12 @@ function KidStoriesContent() {
       <header className="bg-white/90 backdrop-blur-xs border-b border-slate-200/80 px-8 h-16 flex items-center justify-between sticky top-0 z-40 shrink-0 shadow-2xs">
         {/* Left Logo */}
         <div className="flex items-center gap-3">
-          <Link href="/kid/dashboard" className="flex items-center gap-2.5">
-            <span className="font-extrabold text-2xl text-indigo-600 tracking-tight">
-              FocusPath
-            </span>
+          <Link href="/kid/dashboard" className="flex items-center group">
+            <img
+              src="/focuspath_logo.png"
+              alt="FocusPath"
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
         </div>
 

@@ -97,15 +97,13 @@ function LoginContent() {
           
           {/* Logo and Header */}
           <div className="flex flex-col items-center text-center space-y-3">
-            <div className="flex items-center justify-center">
+            <Link href="/" className="flex items-center justify-center transition-transform hover:scale-105">
               <img
                 src="/focuspath_logo.png"
-                alt="FocusPath Logo"
-                className="h-28 w-auto object-contain"
+                alt="FocusPath"
+                className="h-20 sm:h-24 w-auto object-contain"
               />
-            </div>
-            
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">FocusPath</h1>
+            </Link>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Plans that rebuild themselves.
             </p>
@@ -217,18 +215,18 @@ function LoginContent() {
 
         {/* Header Logo */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="flex items-center justify-center">
+          <Link href="/" className="flex items-center justify-center transition-transform hover:scale-105">
             <img
               src="/focuspath_logo.png"
-              alt="FocusPath Logo"
-              className="h-20 w-auto object-contain"
+              alt="FocusPath"
+              className="h-16 w-auto object-contain"
             />
-          </div>
+          </Link>
           <h2 className="text-xl font-bold text-slate-800">
             Sign In – {loginMode === 'kid' ? "Kid's Mode" : 'Adult/Parent'}
           </h2>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-            {loginMode === 'kid' ? 'Fun Guided Study Space' : 'Adaptive Workspace Logs'}
+            {loginMode === 'kid' ? 'Fun Guided Study Space' : 'Adaptive Workspace'}
           </p>
         </div>
 

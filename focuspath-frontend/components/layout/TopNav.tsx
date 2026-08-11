@@ -46,11 +46,12 @@ export const TopNav: React.FC = () => {
         
         {/* Left: Logo & Nav Links */}
         <div className="flex items-center space-x-10">
-          <Link href="/adult/dashboard" className="flex items-center space-x-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-indigo flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105">
-              <Layers className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold text-indigo tracking-tight">FocusPath</span>
+          <Link href="/adult/dashboard" className="flex items-center group">
+            <img
+              src="/focuspath_logo.png"
+              alt="FocusPath"
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
 
           {/* Nav Links */}

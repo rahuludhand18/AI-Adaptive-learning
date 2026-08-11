@@ -1,169 +1,653 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Brain, Target, Shield, Award, Users, BookOpen } from 'lucide-react';
+import {
+  Shield,
+  GraduationCap,
+  Gamepad2,
+  Clock,
+  Target,
+  Sparkles,
+  BarChart3,
+  Sliders,
+  BellRing,
+  Check,
+  Flame,
+  Star
+} from 'lucide-react';
 
-export default function Home() {
+export default function LandingPage() {
+  const [activeHeroMode, setActiveHeroMode] = useState<'adult' | 'kid'>('adult');
+
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans antialiased text-slate-800">
-      {/* Top Navbar */}
-      <header className="border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
+    <div className="min-h-screen bg-[#fafbfc] text-slate-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+      {/* 1. TOP NAVBAR */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+
+          {/* Logo */}
+          <Link href="/" className="flex items-center group">
+            <Image
               src="/focuspath_logo.png"
-              alt="FocusPath Logo"
-              className="h-12 w-auto object-contain"
+              alt="FocusPath"
+              width={180}
+              height={60}
+              className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105"
+              priority
             />
-            <span className="font-bold text-lg text-slate-800 tracking-tight">FocusPath AI</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login" className="text-sm font-semibold hover:text-primary transition-colors">
-              Sign In
-            </Link>
-            <Link href="/auth/register" className="bg-primary text-white hover:bg-primary/90 text-sm font-semibold py-2.5 px-5 rounded-full transition-all shadow-sm">
+          </Link>
+
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-500">
+            <a href="#product" className="hover:text-slate-900 transition-colors">Product</a>
+            <a href="#adult-mode" className="hover:text-slate-900 transition-colors">For Adults</a>
+            <a href="#kids-mode" className="hover:text-slate-900 transition-colors">For Kids</a>
+            <a href="#parent-portal" className="hover:text-slate-900 transition-colors">For Parents</a>
+          </nav>
+
+          {/* Right Action Button */}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/auth/register"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 px-5 rounded-xl shadow-xs transition-all hover:shadow"
+            >
               Get Started
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="mx-auto max-w-7xl space-y-8 p-6 py-12">
-        {/* Hero Section Card (Bento Card) */}
-        <div className="grid grid-cols-12 gap-5">
-          <div className="col-span-12 lg:col-span-8 rounded-[32px] border border-slate-200 bg-white p-8 md:p-12 shadow-sm flex flex-col justify-between min-h-[350px]">
-            <div className="space-y-4 max-w-2xl">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70 bg-primary/5 px-3.5 py-1.5 rounded-full border border-primary/10">
-                AI Adaptive Scheduling
+      {/* MAIN CONTENT WRAPPER */}
+      <main className="max-w-6xl mx-auto px-6 pt-16 pb-24 space-y-28">
+
+        {/* 2. HERO SECTION */}
+        <section id="product" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+          {/* Left Column (Hero Content) */}
+          <div className="lg:col-span-7 space-y-6">
+
+
+
+            {/* Kicker & Main Headline */}
+            <div className="space-y-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600 block">
+                ONE APP, TWO EXPERIENCES.
               </span>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 leading-[1.15]">
-                Unlock your productivity with adaptive, AI-driven study plans.
+              <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-bold text-slate-900 tracking-tight leading-[1.12]">
+                Plans that rebuild <br />
+                themselves.
               </h1>
-              <p className="text-slate-500 font-medium text-base md:text-lg">
-                Rebuild your schedule automatically when you miss tasks, track focus, block distractions, and gamify academic success.
-              </p>
             </div>
-            <div className="pt-6 flex flex-wrap gap-4">
-              <Link href="/auth/register" className="flex items-center gap-2 bg-primary text-white hover:bg-primary/95 font-semibold text-sm py-3 px-6 rounded-full transition-all shadow-sm group">
-                Create Free Account
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+
+            {/* Subtitle Description */}
+            <p className="text-sm sm:text-base text-slate-500 font-normal leading-relaxed max-w-xl">
+              FocusPath tracks how you actually study, then quietly rewrites your schedule around missed sessions, exam deadlines, and your real focus patterns — so you&apos;re never staring at a plan that&apos;s already out of date.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="pt-2 flex flex-wrap items-center gap-3.5">
+              <Link
+                href="/auth/register"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm py-3 px-6 rounded-xl shadow-xs transition-all hover:shadow hover:scale-[1.01]"
+              >
+                Start planning free
               </Link>
+              <a
+                href="#how-it-works"
+                className="bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm py-3 px-6 rounded-xl border border-slate-200/90 shadow-xs transition-all"
+              >
+                See how it works
+              </a>
             </div>
+
+            {/* Micro disclaimer */}
+            <p className="text-[11px] text-slate-400 font-normal">
+              No credit card. Your first study plan is ready in 3 minutes.
+            </p>
           </div>
 
-          {/* Quick Info Bento Card */}
-          <div className="col-span-12 lg:col-span-4 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm flex flex-col justify-between bg-gradient-to-br from-primary/5 to-transparent">
-            <div className="space-y-4">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                Platform Statistics
-              </span>
-              <div className="space-y-2">
-                <div className="text-5xl font-semibold tracking-tight text-slate-800">94.8%</div>
-                <div className="text-sm font-semibold text-slate-500">Average Focus Score Improvement</div>
+          {/* Right Column (Hero Bento Card) */}
+          <div className="lg:col-span-5">
+            <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs space-y-6">
+
+              {/* Circular Focus Score Meter */}
+              <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
+                <div className="relative h-16 w-16 shrink-0 rounded-full border-4 border-indigo-600 flex items-center justify-center bg-indigo-50/20 shadow-xs">
+                  <span className="text-xl font-bold text-slate-900">95</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800">Focus Score</h3>
+                  <p className="text-xs text-slate-400 font-medium">Top 10% this week</p>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Utilizing state-of-the-art Pomodoro sessions and intelligent tab tracking to keep you aligned with your weekly targets.
-              </p>
-            </div>
-            <div className="border-t border-slate-200/60 pt-4 flex justify-between text-slate-500 text-xs font-semibold">
-              <span>Web Portal Only</span>
-              <span>•</span>
-              <span>100% Data Protection</span>
+
+              {/* Timetable List Slots */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
+                  <span className="text-xs font-semibold text-slate-800">Advanced Mathematics</span>
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100/70 px-2.5 py-0.5 rounded-full">
+                    Now
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/60 border border-slate-100/80">
+                  <span className="text-xs font-semibold text-slate-600">Deep Focus Grammar</span>
+                  <span className="text-xs font-semibold text-slate-500 font-mono">09:00–10:00</span>
+                </div>
+
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/60 border border-slate-100/80">
+                  <span className="text-xs font-semibold text-slate-600">Language Lab</span>
+                  <span className="text-xs font-semibold text-slate-500 font-mono">11:00–12:00</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          {/* Mode Selector Header */}
-          <div className="col-span-12 text-center py-4">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">
-              Three Specialized Interfaces
+        </section>
+
+        {/* 3. THREE PERSONAS SECTION */}
+        <section className="space-y-12">
+
+          {/* Section Header */}
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">
+              EVERYONE WINS WITHOUT SPLITTING THE SYSTEM
             </span>
-            <h2 className="text-2xl font-bold text-slate-800 mt-1">Explore FocusPath Modes</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              The same account, three completely <br className="hidden sm:inline" />
+              different apps
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 font-normal leading-relaxed pt-1">
+              Adults get a serious focus tool. Kids get a guided adventure. Parents get quiet oversight — all connected, none of them compromised for the others.
+            </p>
           </div>
 
-          {/* Mode Cards - Adult Mode */}
-          <div className="col-span-12 md:col-span-4 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-primary/30 transition-all duration-300 group">
-            <div className="space-y-4">
-              <div className="bg-primary/5 text-primary p-3 rounded-2xl w-fit group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                <Target className="h-6 w-6" />
+          {/* Three Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* Card 1: Students & Professionals */}
+            <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="h-12 w-12 rounded-2xl bg-pink-50 text-pink-500 flex items-center justify-center shadow-2xs">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-slate-900">Students & professionals</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    An AI scheduling engine that tracks real focus — not just checkmarks — and rebuilds your timetable the moment life gets in the way of your plan.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-800">Adult Mode</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                Perfect for professionals and self-directed students. Create schedules, launch focus timers, track tab behavior metrics, and generate AI schedules.
+            </div>
+
+            {/* Card 2: Kids, with Buddy */}
+            <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shadow-2xs">
+                  <Gamepad2 className="h-6 w-6" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-slate-900">Kids, with Buddy</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    A gamified world of reading quests, math islands, and a friendly pet mascot that turns &quot;time to study&quot; into &quot;ready for the next adventure?&quot;
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Parents, in control */}
+            <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="h-12 w-12 rounded-2xl bg-sky-50 text-sky-500 flex items-center justify-center shadow-2xs">
+                  <Shield className="h-6 w-6" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-slate-900">Parents, in control</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Pin-protected restrictions, real-time access alerts, and a clear view of screen time, rays streaks, and progress — without hovering over a shoulder.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* 4. ADULT MODE (DARK BENTO SECTION) */}
+        <section id="adult-mode" className="rounded-[36px] bg-[#0c1222] text-white p-8 sm:p-12 lg:p-14 shadow-xl relative overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+
+            {/* Left Content Column */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-400 block">
+                  ADULT MODE
+                </span>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight leading-tight">
+                  Your schedule was never the <br className="hidden sm:inline" />
+                  plan. Your progress is.
+                </h2>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg">
+                Most planners fall apart the moment you miss one session. FocusPath expects that — and rebuilds around it automatically, without losing sight of your exam deadlines.
+              </p>
+
+              {/* Feature Points */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-6 w-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-500/30">
+                    <Target className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    <strong className="text-white font-semibold">True-effort focus tracking:</strong> Autonomously audits session scores for real focus
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-6 w-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-500/30">
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    <strong className="text-white font-semibold">Missed a block?</strong> Your timetable rebuilds within seconds, deadlines protected
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-6 w-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-500/30">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    <strong className="text-white font-semibold">AI suggestions tuned to when you actually focus best,</strong> not a generic template
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Card Column */}
+            <div className="lg:col-span-5">
+              <div className="rounded-3xl bg-[#141b2d] border border-slate-800 p-6 shadow-2xl space-y-4">
+
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                  <span className="text-xs font-semibold text-slate-400">Weekly Focus Score</span>
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                    ↑ 92%
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                  <span className="text-xs font-semibold text-slate-400">Total Deep Work</span>
+                  <span className="text-xs font-bold text-white">18.5h</span>
+                </div>
+
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                  <span className="text-xs font-semibold text-slate-400">Avg. Daily Focus</span>
+                  <span className="text-xs font-bold text-white">4.2h</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-400">Current Streak</span>
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <Flame className="h-3.5 w-3.5 fill-amber-400" /> 14 days
+                  </span>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* 5. KID'S MODE SECTION */}
+        <section id="kids-mode" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+          {/* Left Column (Kid Quests Card) */}
+          <div className="lg:col-span-5 order-2 lg:order-1">
+            <div className="rounded-[28px] border border-slate-200/90 bg-white p-7 shadow-xs space-y-4">
+
+              {/* Pet / Buddy Avatar indicator */}
+              <div className="flex items-center gap-2 pb-1">
+                <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm shadow-2xs">
+                  🦉
+                </div>
+                <span className="text-xs font-bold text-slate-800">Buddy&apos;s Quests</span>
+              </div>
+
+              {/* Quest Item 1 */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
+                <span className="text-xs font-bold text-slate-800">Reading Explorer</span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                  75% Done
+                </span>
+              </div>
+
+              {/* Quest Item 2 */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
+                <span className="text-xs font-bold text-slate-800">Math Rocket</span>
+                <span className="text-[10px] font-bold text-orange-700 bg-orange-100/80 px-2.5 py-0.5 rounded-full">
+                  Rank 4
+                </span>
+              </div>
+
+              {/* Daily Streak */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
+                <span className="text-xs font-bold text-slate-800">Daily Streak</span>
+                <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
+                  🔥🔥🔥🔥🔥 5 days
+                </span>
+              </div>
+
+              {/* Stars Earned */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
+                <span className="text-xs font-bold text-slate-800">Stars Earned</span>
+                <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 inline" /> 250
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Right Column (Kid's Mode Description) */}
+          <div className="lg:col-span-7 space-y-6 order-1 lg:order-2">
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-600 block">
+                KID&apos;S MODE
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+                Study time, told as a story.
+              </h2>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-lg">
+              Every quest is a real lesson underneath — reading comprehension, math practice, focus stamina — but to a kid, it just looks like the next adventure with Buddy the owl.
+            </p>
+
+            {/* Bullet Points */}
+            <div className="space-y-3.5 pt-2">
+              <div className="flex items-start gap-3">
+                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Check className="h-3 w-3 stroke-[3]" />
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Story-driven quests across Reading, Math, and Science models.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Check className="h-3 w-3 stroke-[3]" />
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Stars and badges that unlock a real reward shop, not empty points.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Check className="h-3 w-3 stroke-[3]" />
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Built-in 20-minute eye-break reminders — unavoidable, gently enforced.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* 6. PARENT PORTAL SECTION */}
+        <section id="parent-portal" className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+          {/* Left Column (Parent Description & Feature Stack) */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600 block">
+                PARENT PORTAL
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+                See everything. Approve <br />
+                what matters.
+              </h2>
+            </div>
+
+            {/* 3 Feature cards stack */}
+            <div className="space-y-3.5 pt-2">
+
+              {/* Feature 1 */}
+              <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-2xs flex items-start gap-4">
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <BarChart3 className="h-4 w-4" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-900">Weekly focus, not just screen time</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    See how your child&apos;s focus score, study minutes, and streak trend week over week — not just how long the screen was on.
+                  </p>
+                </div>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-2xs flex items-start gap-4">
+                <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Sliders className="h-4 w-4" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-900">Restrictions you actually set</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Choose exactly which sites and apps are allowed, set daily time limits, and pin a bedtime lock — all changeable in seconds.
+                  </p>
+                </div>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-2xs flex items-start gap-4">
+                <div className="h-9 w-9 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <BellRing className="h-4 w-4" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-900">Real-time access requests</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    When something is blocked, you get the request instantly ... with context — an exam article, frivolous, or doing it for a research.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Right Column (Security Notification Card) */}
+          <div className="lg:col-span-5">
+            <div className="rounded-3xl bg-[#111625] border border-slate-800 text-white p-6 shadow-2xl space-y-4">
+
+              {/* Security Alert Header */}
+              <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-wider">
+                <Shield className="h-3.5 w-3.5 fill-rose-400/20" />
+                SECURITY NOTIFICATION
+              </div>
+
+              {/* Title & Details */}
+              <div className="space-y-1.5 pt-1">
+                <h3 className="text-sm font-bold text-white">Access Request</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Alex tried to open &quot;youtube.com/chess&quot; for music. Entertainment category restricted during study hours.
+                </p>
+              </div>
+
+              {/* Decision Action Buttons */}
+              <div className="grid grid-cols-3 gap-2 pt-3">
+                <button className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 transition-colors cursor-pointer text-center">
+                  Allow once
+                </button>
+                <button className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-colors cursor-pointer text-center">
+                  Allow 15 min
+                </button>
+                <button className="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 text-[11px] font-semibold border border-slate-800 transition-colors cursor-pointer text-center">
+                  Deny
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </section>
+
+        {/* 7. GETTING STARTED SECTION (3 STEPS) */}
+        <section id="how-it-works" className="space-y-12">
+
+          {/* Header */}
+          <div className="text-center space-y-2 max-w-xl mx-auto">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">
+              GETTING STARTED
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Three steps, then FocusPath takes it <br />
+              from there
+            </h2>
+          </div>
+
+          {/* 3 Step Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+            {/* Step 1 */}
+            <div className="space-y-3.5">
+              <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
+                1
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">Pick a mode</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Set up an Adult account for yourself, or enable Kid&apos;s Mode with a parent PIN for your child.
               </p>
             </div>
-            <Link href="/auth/login?role=ADULT" className="text-xs font-bold text-primary flex items-center gap-1.5 pt-6 group-hover:underline">
-              Enter Adult Portal
-              <ArrowRight className="h-3 w-3" />
+
+            {/* Step 2 */}
+            <div className="space-y-3.5">
+              <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
+                2
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">Set the guardrails</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Add schedule preferences, scan from exam subjects and deadlines. Parents set screen time limits and content rules.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="space-y-3.5">
+              <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
+                3
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">Let it adapt</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                FocusPath tracks real focus and rebuilds the plan as life happens — no manual rescheduling, ever.
+              </p>
+            </div>
+
+          </div>
+        </section>
+
+        {/* 8. BOTTOM CTA BANNER CARD */}
+        <section className="rounded-[36px] bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white p-10 sm:p-14 text-center shadow-xl relative overflow-hidden space-y-6">
+
+          <div className="space-y-2 max-w-2xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
+              Your plan is about to get a lot harder to break.
+            </h2>
+            <p className="text-xs sm:text-sm text-indigo-100 font-medium">
+              Start free today — for yourself, your family, or both.
+            </p>
+          </div>
+
+          <div>
+            <Link
+              href="/auth/register"
+              className="inline-block bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs sm:text-sm py-3.5 px-8 rounded-2xl shadow-md transition-all hover:scale-[1.02]"
+            >
+              Start planning free
             </Link>
           </div>
 
-          {/* Parent Mode Card */}
-          <div className="col-span-12 md:col-span-4 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-indigo-600/30 transition-all duration-300 group">
-            <div className="space-y-4">
-              <div className="bg-indigo-50 text-indigo-600 p-3 rounded-2xl w-fit group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                <Shield className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800">Parent Mode</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                Manage your child's limits. View analytics, authorize logins, lock down apps and blacklisted sites, and grant temporary access window.
-              </p>
-            </div>
-            <Link href="/auth/login?role=PARENT" className="text-xs font-bold text-indigo-600 flex items-center gap-1.5 pt-6 group-hover:underline">
-              Enter Parent Portal
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
+          {/* Bottom subtle neon accent border glow */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 opacity-60"></div>
+        </section>
 
-          {/* Kid Mode Card */}
-          <div className="col-span-12 md:col-span-4 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between hover:border-emerald-600/30 transition-all duration-300 group">
-            <div className="space-y-4">
-              <div className="bg-emerald-50 text-emerald-600 p-3 rounded-2xl w-fit group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
-                <Award className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800">Kid Mode</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                Gamified space for younger learners. Complete quest schedules, follow custom restrictions, read stories, unlock badges, and redeem stars.
-              </p>
-            </div>
-            <Link href="/auth/login?role=KID" className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 pt-6 group-hover:underline">
-              Enter Kid Portal
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          {/* Platform Core Benefits Row */}
-          <div className="col-span-12 md:col-span-6 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm flex items-start gap-4">
-            <div className="bg-primary/5 p-3 rounded-2xl text-primary">
-              <Users className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-bold text-slate-800">Collaborative Ecosystem</h4>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                Parents easily build timetables, verify kids progress reports, and approve login lockouts instantly via real-time alerts.
-              </p>
-            </div>
-          </div>
-
-          <div className="col-span-12 md:col-span-6 rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm flex items-start gap-4">
-            <div className="bg-primary/5 p-3 rounded-2xl text-primary">
-              <BookOpen className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-bold text-slate-800">Gamified Reading Quests</h4>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                Encourage children to follow through with schedules using story-based quest progression that unlocks badges and star credits.
-              </p>
-            </div>
-          </div>
-        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-100 bg-white py-8 text-center text-xs text-slate-400 font-semibold">
-        <p>&copy; {new Date().getFullYear()} FocusPath AI. Designed for Enterprise-grade Productivity Management.</p>
+      {/* 9. FOOTER */}
+      <footer className="border-t border-slate-200/80 bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-14 space-y-12">
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
+
+            {/* Column 1: Brand & Tagline */}
+            <div className="md:col-span-6 space-y-4">
+              <Link href="/" className="inline-block">
+                <Image
+                  src="/focuspath_logo.png"
+                  alt="FocusPath"
+                  width={150}
+                  height={50}
+                  className="h-8.5 w-auto object-contain"
+                />
+              </Link>
+              <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                Plans that rebuild themselves — for students, kids, and the parents watching over them.
+              </p>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  LEGAL
+                </span>
+                <div className="flex items-center gap-4 text-[11px] font-semibold text-slate-500">
+                  <Link href="/privacy" className="hover:text-slate-800 transition-colors">Privacy Policy</Link>
+                  <span>•</span>
+                  <Link href="/terms" className="hover:text-slate-800 transition-colors">Terms of Service</Link>
+                  <span>•</span>
+                  <a href="mailto:support@focuspath.ai" className="hover:text-slate-800 transition-colors">Report an issue</a>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Product Links */}
+            <div className="md:col-span-3 space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                PRODUCT
+              </h4>
+              <ul className="space-y-2 text-xs font-semibold text-slate-600">
+                <li><Link href="/auth/login?role=ADULT" className="hover:text-indigo-600 transition-colors">Adult Mode</Link></li>
+                <li><Link href="/auth/login?role=KID" className="hover:text-emerald-600 transition-colors">Kid&apos;s Mode</Link></li>
+                <li><Link href="/auth/login?role=PARENT" className="hover:text-indigo-600 transition-colors">Parent Portal</Link></li>
+              </ul>
+            </div>
+
+            {/* Column 3: Company Links */}
+            <div className="md:col-span-3 space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                COMPANY
+              </h4>
+              <ul className="space-y-2 text-xs font-semibold text-slate-600">
+                <li><a href="#product" className="hover:text-indigo-600 transition-colors">About</a></li>
+                <li><a href="#how-it-works" className="hover:text-indigo-600 transition-colors">Careers</a></li>
+                <li><a href="mailto:contact@focuspath.ai" className="hover:text-indigo-600 transition-colors">Contact</a></li>
+              </ul>
+            </div>
+
+          </div>
+
+          {/* Bottom Copyright line */}
+          <div className="border-t border-slate-100 pt-6 text-left">
+            <p className="text-[11px] text-slate-400 font-medium">
+              © {new Date().getFullYear()} FocusPath, Inc. All rights reserved.
+            </p>
+          </div>
+
+        </div>
       </footer>
+
     </div>
   );
 }
