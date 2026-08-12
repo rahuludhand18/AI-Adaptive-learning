@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Plus, Globe, ShieldCheck } from 'lucide-react';
+import { X, Plus, Globe } from 'lucide-react';
 
 interface AddWebsiteModalProps {
   isOpen: boolean;
@@ -32,23 +32,23 @@ export default function AddWebsiteModal({ isOpen, onClose, onAdd }: AddWebsiteMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 rounded-[32px] p-6 max-w-md w-full shadow-lg space-y-5 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-6 max-w-md w-full shadow-lg space-y-5 animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
               <Globe className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-800">Add New Site or App</h3>
-              <p className="text-xs text-slate-400 font-medium">Configure custom access permissions</p>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Add New Site or App</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Configure custom access permissions</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="h-4.5 w-4.5" />
           </button>
@@ -57,7 +57,7 @@ export default function AddWebsiteModal({ isOpen, onClose, onAdd }: AddWebsiteMo
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Platform / Website Name
             </label>
             <input
@@ -65,38 +65,38 @@ export default function AddWebsiteModal({ isOpen, onClose, onAdd }: AddWebsiteMo
               placeholder="e.g. Duolingo, Coursera, YouTube"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40"
+              className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40"
+              className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer"
             >
-              <option value="Educational Platform">Educational Platform</option>
-              <option value="General Knowledge">General Knowledge</option>
-              <option value="Video Content">Video Content</option>
-              <option value="Gaming & Entertainment">Gaming & Entertainment</option>
-              <option value="Social Media">Social Media</option>
+              <option value="Educational Platform" className="dark:bg-slate-900">Educational Platform</option>
+              <option value="General Knowledge" className="dark:bg-slate-900">General Knowledge</option>
+              <option value="Video Content" className="dark:bg-slate-900">Video Content</option>
+              <option value="Gaming & Entertainment" className="dark:bg-slate-900">Gaming & Entertainment</option>
+              <option value="Social Media" className="dark:bg-slate-900">Social Media</option>
             </select>
           </div>
 
-          <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+          <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
             <div>
-              <span className="text-xs font-bold text-slate-800">Initial Access State</span>
-              <p className="text-[10px] text-slate-400 font-medium">Allow child access by default</p>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Initial Access State</span>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Allow child access by default</p>
             </div>
             <button
               type="button"
               onClick={() => setAllowed(!allowed)}
               className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                allowed ? 'bg-indigo-600' : 'bg-slate-200'
+                allowed ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
               }`}
             >
               <span
@@ -111,7 +111,7 @@ export default function AddWebsiteModal({ isOpen, onClose, onAdd }: AddWebsiteMo
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 rounded-2xl transition-colors cursor-pointer"
+              className="flex-1 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-colors cursor-pointer"
             >
               Cancel
             </button>

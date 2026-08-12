@@ -19,7 +19,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   size = 180,
   strokeWidth = 14,
   color = '#4F46E5',
-  backgroundColor = '#EEF2FF',
+  backgroundColor,
   label,
   subtitle,
 }) => {
@@ -36,9 +36,10 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={backgroundColor}
+          stroke={backgroundColor || 'currentColor'}
           strokeWidth={strokeWidth}
           fill="transparent"
+          className={!backgroundColor ? 'text-slate-100 dark:text-slate-800' : ''}
         />
         {/* Progress Circle */}
         <circle
@@ -56,9 +57,9 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
       </svg>
       {/* Center Label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-4xl font-extrabold text-textPrimary tracking-tight">{value}</span>
-        {label && <span className="text-xs font-semibold text-textSecondary uppercase tracking-wider mt-0.5">{label}</span>}
-        {subtitle && <span className="text-[11px] text-textSecondary mt-0.5">{subtitle}</span>}
+        <span className="text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{value}</span>
+        {label && <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">{label}</span>}
+        {subtitle && <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</span>}
       </div>
     </div>
   );

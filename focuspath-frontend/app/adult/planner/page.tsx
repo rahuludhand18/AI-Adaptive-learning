@@ -59,17 +59,17 @@ export default function AdultPlannerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col font-sans antialiased text-textPrimary">
+    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
       <TopNav />
 
       <PageContainer>
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
           <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary dark:text-slate-100 tracking-tight">
               {COPY.schedule.heading}
             </h1>
-            <p className="text-sm text-textSecondary font-normal">
+            <p className="text-sm text-textSecondary dark:text-slate-400 font-normal">
               {COPY.schedule.subheading}
             </p>
           </div>
@@ -80,18 +80,18 @@ export default function AdultPlannerPage() {
             {/* Upload Syllabus Link Button */}
             <Link
               href="/adult/onboarding"
-              className="py-2 px-3.5 bg-indigo-light hover:bg-indigo/10 text-indigo font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-indigo/20 shadow-sm"
+              className="py-2 px-3.5 bg-indigo-light dark:bg-indigo-950/50 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/50 text-indigo dark:text-indigo-400 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-indigo/20 shadow-sm"
             >
-              <UploadCloud className="w-4 h-4 text-indigo" />
+              <UploadCloud className="w-4 h-4 text-indigo dark:text-indigo-400" />
               <span>Upload Syllabus</span>
             </Link>
 
             {/* Week / Month View Toggle */}
-            <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-border dark:border-slate-800 shadow-sm">
               <button
                 onClick={() => setViewMode('week')}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === 'week' ? 'bg-indigo text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary'
+                  viewMode === 'week' ? 'bg-indigo text-white shadow-sm' : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
                 }`}
               >
                 Week View
@@ -99,7 +99,7 @@ export default function AdultPlannerPage() {
               <button
                 onClick={() => setViewMode('month')}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === 'month' ? 'bg-indigo text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary'
+                  viewMode === 'month' ? 'bg-indigo text-white shadow-sm' : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
                 }`}
               >
                 Month View
@@ -119,7 +119,7 @@ export default function AdultPlannerPage() {
                 className={`py-3 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-indigo text-white shadow-md shadow-indigo/20'
-                    : 'bg-white text-textPrimary border border-border hover:border-indigo/40'
+                    : 'bg-white dark:bg-slate-900 text-textPrimary dark:text-slate-200 border border-border dark:border-slate-800 hover:border-indigo/40'
                 }`}
               >
                 <span className="text-[10px] font-extrabold tracking-wider uppercase opacity-80">{item.day}</span>
@@ -138,7 +138,7 @@ export default function AdultPlannerPage() {
               return (
                 <div key={dayItem.day} className="space-y-3">
                   {/* Top Day Header Bar Indicator */}
-                  <div className="h-1 bg-slate-200 rounded-full mb-1" />
+                  <div className="h-1 bg-slate-200 dark:bg-slate-800 rounded-full mb-1" />
 
                   {dayBlocks.length > 0 ? (
                     dayBlocks.map((block) => {
@@ -156,19 +156,19 @@ export default function AdultPlannerPage() {
                           }}
                           className={`rounded-2xl p-3.5 border shadow-sm transition-all cursor-pointer relative flex flex-col justify-between min-h-[120px] ${
                             isActive
-                              ? 'bg-white border-l-4 border-l-indigo border-indigo/30 ring-2 ring-indigo/10 shadow-md'
+                              ? 'bg-white dark:bg-slate-900 border-l-4 border-l-indigo border-indigo/30 ring-2 ring-indigo/10 shadow-md'
                               : isSpecial
-                              ? 'bg-teal-light/80 border-teal/40'
+                              ? 'bg-teal-light/80 dark:bg-teal-950/40 border-teal/40 dark:border-teal-800/40'
                               : isWarm
-                              ? 'bg-amber-50/70 border-amber-200'
+                              ? 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/40'
                               : isCompleted
-                              ? 'bg-indigo-light/40 border-indigo-light'
-                              : 'bg-white border-border hover:border-indigo/40'
+                              ? 'bg-indigo-light/40 dark:bg-indigo-950/30 border-indigo-light dark:border-indigo-900/30'
+                              : 'bg-white dark:bg-slate-900 border-border dark:border-slate-800 hover:border-indigo/40'
                           }`}
                         >
                           {/* Time & Completed Check / CURRENT badge */}
-                          <div className="flex items-center justify-between text-[11px] font-bold text-textSecondary mb-1.5">
-                            <span className={isActive ? 'text-indigo' : ''}>{block.timeRange}</span>
+                          <div className="flex items-center justify-between text-[11px] font-bold text-textSecondary dark:text-slate-400 mb-1.5">
+                            <span className={isActive ? 'text-indigo dark:text-indigo-400' : ''}>{block.timeRange}</span>
                             {isCompleted ? (
                               <CheckCircle2 className="w-3.5 h-3.5 text-indigo shrink-0" />
                             ) : isActive ? (
@@ -180,17 +180,17 @@ export default function AdultPlannerPage() {
 
                           {/* Title & Subtitle */}
                           <div>
-                            <h4 className="text-xs font-bold text-textPrimary leading-snug">
+                            <h4 className="text-xs font-bold text-textPrimary dark:text-slate-100 leading-snug">
                               {block.title}
                             </h4>
-                            <p className="text-[10px] text-textSecondary mt-0.5 leading-tight">
+                            <p className="text-[10px] text-textSecondary dark:text-slate-400 mt-0.5 leading-tight">
                               {block.subtitle}
                             </p>
                           </div>
 
                           {/* Active Progress Bar at Bottom of Card */}
                           {isActive && (
-                            <div className="w-full bg-slate-100 rounded-full h-1 mt-2.5 overflow-hidden">
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 mt-2.5 overflow-hidden">
                               <div className="bg-indigo h-full w-3/4 rounded-full animate-pulse" />
                             </div>
                           )}
@@ -199,9 +199,9 @@ export default function AdultPlannerPage() {
                     })
                   ) : (
                     /* Weekend Flex / Rest Day Placeholder Card */
-                    <div className="rounded-2xl p-4 border-2 border-dashed border-slate-200 bg-white/60 flex flex-col items-center justify-center text-center space-y-1.5 min-h-[140px]">
-                      <CalendarX className="w-5 h-5 text-slate-300" />
-                      <span className="text-[11px] font-bold text-slate-400">
+                    <div className="rounded-2xl p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 flex flex-col items-center justify-center text-center space-y-1.5 min-h-[140px]">
+                      <CalendarX className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                      <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
                         {dayItem.index === 5 ? 'Flex Day' : 'Rest Day'}
                       </span>
                     </div>
@@ -211,58 +211,57 @@ export default function AdultPlannerPage() {
             })}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl p-8 border border-border shadow-card text-center space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-border dark:border-slate-800 shadow-card text-center space-y-3">
             <CalendarIcon className="w-10 h-10 text-indigo mx-auto" />
-            <h3 className="text-lg font-bold text-textPrimary">Month Overview Calendar</h3>
-            <p className="text-xs text-textSecondary max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-textPrimary dark:text-slate-100">Month Overview Calendar</h3>
+            <p className="text-xs text-textSecondary dark:text-slate-400 max-w-md mx-auto">
               Your overall workload is evenly balanced across the month.
             </p>
           </div>
         )}
 
         {/* Bottom Wide Panel: Weekly Cognitive Load */}
-        <div className="bg-indigo-light/60 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-card space-y-6">
+        <div className="bg-indigo-light/60 dark:bg-indigo-950/30 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-card space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
             {/* Left Content */}
             <div className="space-y-4 flex-1">
               <div>
-                <h3 className="text-lg font-extrabold text-textPrimary">
+                <h3 className="text-lg font-extrabold text-textPrimary dark:text-slate-100">
                   {COPY.schedule.cognitiveLoadTitle}
                 </h3>
-                <p className="text-xs text-textSecondary mt-1">
+                <p className="text-xs text-textSecondary dark:text-slate-400 mt-1">
                   {COPY.schedule.cognitiveLoadSubtitle}
                 </p>
               </div>
 
               {/* 4 Stat Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-white p-3.5 rounded-xl border border-border shadow-sm">
-                  <span className="text-[10px] font-bold text-textSecondary uppercase block">TOTAL HOURS</span>
-                  <span className="text-lg font-black text-textPrimary mt-0.5 block">24.5</span>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">TOTAL HOURS</span>
+                  <span className="text-lg font-black text-textPrimary dark:text-slate-100 mt-0.5 block">24.5</span>
                 </div>
-                <div className="bg-white p-3.5 rounded-xl border border-border shadow-sm">
-                  <span className="text-[10px] font-bold text-textSecondary uppercase block">FOCUS SCORE</span>
-                  <span className="text-lg font-black text-emerald-600 mt-0.5 block">92%</span>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">FOCUS SCORE</span>
+                  <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">92%</span>
                 </div>
-                <div className="bg-white p-3.5 rounded-xl border border-border shadow-sm">
-                  <span className="text-[10px] font-bold text-textSecondary uppercase block">COMPLETED</span>
-                  <span className="text-lg font-black text-textPrimary mt-0.5 block">18/24</span>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">COMPLETED</span>
+                  <span className="text-lg font-black text-textPrimary dark:text-slate-100 mt-0.5 block">18/24</span>
                 </div>
-                <div className="bg-white p-3.5 rounded-xl border border-border shadow-sm">
-                  <span className="text-[10px] font-bold text-textSecondary uppercase block">STREAK</span>
-                  <span className="text-lg font-black text-amber-700 mt-0.5 block">12 Days</span>
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">STREAK</span>
+                  <span className="text-lg font-black text-amber-700 dark:text-amber-400 mt-0.5 block">12 Days</span>
                 </div>
               </div>
             </div>
 
             {/* Right Large Circular Gauge Ring Card */}
-            <div className="bg-white p-6 rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center shrink-0">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border dark:border-slate-800 shadow-sm flex flex-col items-center justify-center shrink-0">
               <ProgressRing
                 value={64}
                 label="Progress"
                 color="#4F46E5"
-                backgroundColor="#EEF2FF"
                 size={120}
                 strokeWidth={10}
               />
@@ -284,13 +283,13 @@ export default function AdultPlannerPage() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-base font-bold text-textPrimary">Add Study Time Block</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 border border-border dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border dark:border-slate-800">
+              <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">Add Study Time Block</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-textSecondary hover:text-textPrimary cursor-pointer"
+                className="p-1 rounded-lg text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -298,7 +297,7 @@ export default function AdultPlannerPage() {
 
             <form onSubmit={handleCreateBlock} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-textPrimary uppercase block mb-1">
+                <label className="text-xs font-semibold text-textPrimary dark:text-slate-200 uppercase block mb-1">
                   Block Title
                 </label>
                 <input
@@ -307,12 +306,12 @@ export default function AdultPlannerPage() {
                   value={blockTitle}
                   onChange={(e) => setBlockTitle(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-textPrimary uppercase block mb-1">
+                <label className="text-xs font-semibold text-textPrimary dark:text-slate-200 uppercase block mb-1">
                   Subtitle / Description
                 </label>
                 <input
@@ -320,31 +319,31 @@ export default function AdultPlannerPage() {
                   placeholder="e.g. Raft Consensus Protocol"
                   value={blockSubtitle}
                   onChange={(e) => setBlockSubtitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-textPrimary uppercase block mb-1">
+                  <label className="text-xs font-semibold text-textPrimary dark:text-slate-200 uppercase block mb-1">
                     Time Window
                   </label>
                   <input
                     type="text"
                     value={blockTime}
                     onChange={(e) => setBlockTime(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-textPrimary uppercase block mb-1">
+                  <label className="text-xs font-semibold text-textPrimary dark:text-slate-200 uppercase block mb-1">
                     Card Style
                   </label>
                   <select
                     value={blockType}
                     onChange={(e) => setBlockType(e.target.value as TimeBlock['type'])}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer"
                   >
                     <option value="default">Standard</option>
                     <option value="special">Mentorship (Teal)</option>
@@ -357,7 +356,7 @@ export default function AdultPlannerPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="py-2.5 px-4 bg-slate-100 text-textSecondary font-semibold text-xs rounded-xl hover:bg-slate-200 cursor-pointer"
+                  className="py-2.5 px-4 bg-slate-100 dark:bg-slate-800 text-textSecondary dark:text-slate-300 font-semibold text-xs rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
                 >
                   Cancel
                 </button>
