@@ -93,19 +93,19 @@ export default function AdultDashboardPage() {
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col font-sans antialiased text-textPrimary">
+    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
       <TopNav />
 
       <PageContainer>
         {/* Morning / Evening View Switcher Banner */}
-        <div className="flex items-center justify-between pb-2 border-b border-border">
-          <div className="flex items-center space-x-2 bg-white p-1 rounded-xl border border-border shadow-sm">
+        <div className="flex items-center justify-between pb-2 border-b border-border dark:border-slate-800">
+          <div className="flex items-center space-x-2 bg-white dark:bg-slate-900 p-1 rounded-xl border border-border dark:border-slate-800 shadow-sm">
             <button
               onClick={() => setDashboardView('morning')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
                 dashboardView === 'morning'
                   ? 'bg-indigo text-white shadow-sm'
-                  : 'text-textSecondary hover:text-textPrimary'
+                  : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
               }`}
             >
               <Sun className="w-3.5 h-3.5" />
@@ -116,7 +116,7 @@ export default function AdultDashboardPage() {
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
                 dashboardView === 'evening'
                   ? 'bg-indigo text-white shadow-sm'
-                  : 'text-textSecondary hover:text-textPrimary'
+                  : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
               }`}
             >
               <Moon className="w-3.5 h-3.5" />
@@ -137,10 +137,10 @@ export default function AdultDashboardPage() {
           <div className="space-y-6">
             {/* Header Info */}
             <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-textPrimary tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold text-textPrimary dark:text-slate-100 tracking-tight">
                 {COPY.dashboardMorning.heading}
               </h1>
-              <p className="text-sm text-textSecondary font-normal">
+              <p className="text-sm text-textSecondary dark:text-slate-400 font-normal">
                 {COPY.dashboardMorning.subheading}
               </p>
             </div>
@@ -148,8 +148,8 @@ export default function AdultDashboardPage() {
             {/* Row of 3 Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Card 1: Focus Score ProgressRing */}
-              <div className="bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col items-center justify-between text-center min-h-[280px]">
-                <span className="text-xs font-bold text-textSecondary uppercase tracking-wider">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col items-center justify-between text-center min-h-[280px]">
+                <span className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider">
                   {COPY.dashboardMorning.focusScoreTitle}
                 </span>
 
@@ -163,7 +163,7 @@ export default function AdultDashboardPage() {
                   />
                 </div>
 
-                <p className="text-xs text-textSecondary font-normal max-w-[200px]">
+                <p className="text-xs text-textSecondary dark:text-slate-400 font-normal max-w-[200px]">
                   {COPY.dashboardMorning.focusScoreNote}
                 </p>
               </div>
@@ -181,10 +181,10 @@ export default function AdultDashboardPage() {
               </div>
 
               {/* Card 3: Today's Timetable List */}
-              <div className="bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col justify-between min-h-[280px]">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col justify-between min-h-[280px]">
                 <div>
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
-                    <h3 className="text-base font-bold text-textPrimary">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-border dark:border-slate-800">
+                    <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">
                       {COPY.dashboardMorning.timetableTitle}
                     </h3>
                     <Link
@@ -206,10 +206,10 @@ export default function AdultDashboardPage() {
                         }}
                         className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                           block.status === 'completed'
-                            ? 'bg-slate-50 border-slate-200 text-slate-500'
+                            ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                             : block.status === 'active'
                             ? 'bg-indigo-light/60 border-indigo text-indigo font-medium shadow-sm'
-                            : 'bg-white border-border hover:border-indigo/40'
+                            : 'bg-white dark:bg-slate-800/40 border-border dark:border-slate-800 hover:border-indigo/40 text-textPrimary dark:text-slate-200'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
@@ -218,7 +218,7 @@ export default function AdultDashboardPage() {
                           ) : block.status === 'active' ? (
                             <span className="w-2.5 h-2.5 rounded-full bg-indigo animate-pulse shrink-0" />
                           ) : (
-                            <Clock className="w-4 h-4 text-textSecondary shrink-0" />
+                            <Clock className="w-4 h-4 text-textSecondary dark:text-slate-400 shrink-0" />
                           )}
                           <div>
                             <h4 className="text-xs font-bold">{block.title}</h4>
@@ -233,14 +233,14 @@ export default function AdultDashboardPage() {
                 </div>
 
                 {/* Progress Bar */}
-                <div className="mt-4 pt-3 border-t border-border space-y-1.5">
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div className="mt-4 pt-3 border-t border-border dark:border-slate-800 space-y-1.5">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-indigo h-full rounded-full transition-all duration-500"
                       style={{ width: `${(completedBlocks / totalBlocks) * 100}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-textSecondary text-right font-medium">
+                  <p className="text-[11px] text-textSecondary dark:text-slate-400 text-right font-medium">
                     {completedBlocks} of {totalBlocks} blocks completed
                   </p>
                 </div>
@@ -250,18 +250,18 @@ export default function AdultDashboardPage() {
             {/* Middle Row: Concentration Trend Chart (Left) + Stat Cards Stacked (Right) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Weekly Concentration Trend Chart (8 cols) */}
-              <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col justify-between">
+              <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-base font-bold text-textPrimary">
+                    <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">
                       {COPY.dashboardMorning.trendTitle}
                     </h3>
-                    <p className="text-xs text-textSecondary">
+                    <p className="text-xs text-textSecondary dark:text-slate-400">
                       {COPY.dashboardMorning.trendSubtitle}
                     </p>
                   </div>
 
-                  <select className="px-3 py-1.5 bg-slate-50 border border-border rounded-xl text-xs font-semibold text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo">
+                  <select className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs font-semibold text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo">
                     <option>Last 7 Days</option>
                     <option>Last 14 Days</option>
                     <option>Last 30 Days</option>
@@ -278,11 +278,11 @@ export default function AdultDashboardPage() {
                           <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
                       <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} domain={[60, 100]} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }}
+                        contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: '1px solid #334155', color: '#fff', fontSize: '12px' }}
                       />
                       <Area
                         type="monotone"
@@ -318,8 +318,8 @@ export default function AdultDashboardPage() {
             </div>
 
             {/* Bottom Wide Ergonomic Pro Tip Card */}
-            <div className="bg-indigo-light/50 rounded-2xl p-6 border border-indigo/20 shadow-card flex flex-col md:flex-row items-center gap-6">
-              <div className="w-full md:w-64 h-40 rounded-xl overflow-hidden shadow-sm shrink-0 relative bg-slate-200">
+            <div className="bg-indigo-light/50 dark:bg-indigo-950/30 rounded-2xl p-6 border border-indigo/20 shadow-card flex flex-col md:flex-row items-center gap-6">
+              <div className="w-full md:w-64 h-40 rounded-xl overflow-hidden shadow-sm shrink-0 relative bg-slate-200 dark:bg-slate-800">
                 <img
                   src="https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=600&auto=format&fit=crop&q=80"
                   alt="Workspace setup"
@@ -333,11 +333,11 @@ export default function AdultDashboardPage() {
                   <span>{COPY.dashboardMorning.proTipBadge}</span>
                 </div>
 
-                <h3 className="text-lg font-bold text-textPrimary">
+                <h3 className="text-lg font-bold text-textPrimary dark:text-slate-100">
                   {COPY.dashboardMorning.proTipTitle}
                 </h3>
 
-                <p className="text-xs text-textSecondary leading-relaxed">
+                <p className="text-xs text-textSecondary dark:text-slate-400 leading-relaxed">
                   {COPY.dashboardMorning.proTipBody}
                 </p>
 
@@ -348,29 +348,29 @@ export default function AdultDashboardPage() {
             </div>
           </div>
         ) : (
-          /* --- EVENING REFLECTION VIEW (Matching Image 1) --- */
+          /* --- EVENING REFLECTION VIEW --- */
           <div className="space-y-6">
             {/* Header Info */}
             <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary dark:text-slate-100 tracking-tight">
                 {COPY.dashboardEvening.heading}
               </h1>
-              <p className="text-sm text-textSecondary font-normal">
+              <p className="text-sm text-textSecondary dark:text-slate-400 font-normal">
                 {COPY.dashboardEvening.subheading}
               </p>
             </div>
 
             {/* Weekly Goal Completion Card */}
-            <div className="bg-white rounded-2xl p-6 border border-border shadow-card space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-textSecondary uppercase tracking-wider">
+                <span className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider">
                   {COPY.dashboardEvening.goalTitle}
                 </span>
                 <span className="text-base font-extrabold text-indigo">82%</span>
               </div>
 
               {/* Solid Blue Horizontal Progress Bar */}
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                 <div
                   className="bg-indigo h-full rounded-full transition-all duration-700"
                   style={{ width: '82%' }}
@@ -383,10 +383,10 @@ export default function AdultDashboardPage() {
                   const isDone = idx <= 3; // Mon, Tue, Wed, Thu
                   return (
                     <div key={day} className="flex flex-col items-center space-y-1.5">
-                      <span className="text-[10px] font-bold text-textSecondary">{day}</span>
+                      <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400">{day}</span>
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          isDone ? 'bg-indigo' : 'bg-slate-300'
+                          isDone ? 'bg-indigo' : 'bg-slate-300 dark:bg-slate-700'
                         }`}
                       />
                     </div>
@@ -398,13 +398,13 @@ export default function AdultDashboardPage() {
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Daily Tasks Checklist (7 cols) */}
-              <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-border shadow-card flex flex-col justify-between">
+              <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-4 mb-4">
-                    <h3 className="text-base font-bold text-textPrimary">
+                    <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">
                       {COPY.dashboardEvening.tasksTitle}
                     </h3>
-                    <span className="text-xs font-bold text-textSecondary">
+                    <span className="text-xs font-bold text-textSecondary dark:text-slate-400">
                       {completedTasksCount} of {totalTasksCount} completed
                     </span>
                   </div>
@@ -417,8 +417,8 @@ export default function AdultDashboardPage() {
                         onClick={() => toggleTask(task.id)}
                         className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center space-x-3.5 ${
                           task.completed
-                            ? 'bg-white border-border text-slate-400'
-                            : 'bg-white border-border hover:border-indigo/40 text-textPrimary'
+                            ? 'bg-slate-50/50 dark:bg-slate-800/40 border-border dark:border-slate-800 text-slate-400 dark:text-slate-500'
+                            : 'bg-white dark:bg-slate-850 border-border dark:border-slate-800 hover:border-indigo/40 text-textPrimary dark:text-slate-200'
                         }`}
                       >
                         <button className="shrink-0 cursor-pointer">
@@ -427,16 +427,16 @@ export default function AdultDashboardPage() {
                               ✓
                             </div>
                           ) : (
-                            <div className="w-5 h-5 rounded-md border-2 border-slate-300" />
+                            <div className="w-5 h-5 rounded-md border-2 border-slate-300 dark:border-slate-600" />
                           )}
                         </button>
 
                         <div className="flex-1">
-                          <h4 className={`text-sm font-bold ${task.completed ? 'line-through text-slate-400' : 'text-textPrimary'}`}>
+                          <h4 className={`text-sm font-bold ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-textPrimary dark:text-slate-200'}`}>
                             {task.title}
                           </h4>
                           {task.subtitle && (
-                            <p className={`text-xs mt-0.5 ${task.completed ? 'line-through text-slate-400' : 'text-textSecondary'}`}>
+                            <p className={`text-xs mt-0.5 ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-textSecondary dark:text-slate-400'}`}>
                               {task.subtitle}
                             </p>
                           )}
@@ -447,7 +447,7 @@ export default function AdultDashboardPage() {
                 </div>
 
                 {/* Add custom task affordance */}
-                <div className="mt-6 pt-4 border-t border-border/60">
+                <div className="mt-6 pt-4 border-t border-border/60 dark:border-slate-800">
                   {showAddForm ? (
                     <form onSubmit={handleAddNewTask} className="flex items-center space-x-2">
                       <input
@@ -455,7 +455,7 @@ export default function AdultDashboardPage() {
                         placeholder="Task title..."
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                        className="flex-1 px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
                         autoFocus
                       />
                       <button
@@ -500,8 +500,8 @@ export default function AdultDashboardPage() {
                 </div>
 
                 {/* Daily Reflection Textarea Card */}
-                <div className="bg-white rounded-2xl p-6 border border-border shadow-card space-y-3">
-                  <h3 className="text-xs font-bold text-textPrimary">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card space-y-3">
+                  <h3 className="text-xs font-bold text-textPrimary dark:text-slate-200">
                     {COPY.dashboardEvening.reflectionTitle}
                   </h3>
                   <textarea
@@ -509,18 +509,18 @@ export default function AdultDashboardPage() {
                     value={reflectionText}
                     onChange={(e) => setReflectionText(e.target.value)}
                     placeholder={COPY.dashboardEvening.reflectionPlaceholder}
-                    className="w-full p-3.5 bg-indigo-light/30 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo transition-all resize-none font-medium"
+                    className="w-full p-3.5 bg-indigo-light/30 dark:bg-slate-800/80 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo transition-all resize-none font-medium"
                   />
                 </div>
 
                 {/* Teal Pro Tip Card with Pinned Save & Update Plan Button */}
                 <div className="relative">
-                  <div className="bg-teal-light/80 border border-teal/30 rounded-2xl p-5 shadow-sm space-y-2 pr-28">
-                    <div className="flex items-center space-x-2 text-teal-900 font-bold text-xs">
+                  <div className="bg-teal-light/80 dark:bg-teal-950/40 border border-teal/30 dark:border-teal-800/40 rounded-2xl p-5 shadow-sm space-y-2 pr-28">
+                    <div className="flex items-center space-x-2 text-teal-900 dark:text-teal-300 font-bold text-xs">
                       <Lightbulb className="w-4 h-4 text-teal" />
                       <span>{COPY.dashboardEvening.proTipTitle}</span>
                     </div>
-                    <p className="text-[11px] text-teal-800 leading-tight">
+                    <p className="text-[11px] text-teal-800 dark:text-teal-300/90 leading-tight">
                       {COPY.dashboardEvening.proTipBody}
                     </p>
                   </div>

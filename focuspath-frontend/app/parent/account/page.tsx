@@ -6,13 +6,10 @@ import ParentLayout from '@/components/layout/ParentLayout';
 import { useAuthStore } from '@/store/authStore';
 import { apiRequest } from '@/lib/api';
 import {
-  User,
   UserPlus,
   Shield,
-  Key,
   CheckCircle,
   Users,
-  Settings,
   Lock
 } from 'lucide-react';
 
@@ -72,33 +69,33 @@ export default function ParentAccountPage() {
         
         {/* Header Title */}
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             Account & Child Profiles
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Manage your parent profile, credentials, and registered child devices.
           </p>
         </div>
 
         {success && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-semibold flex items-center justify-between">
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-semibold flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-600" />
               <span>{success}</span>
             </div>
-            <button onClick={() => setSuccess(null)} className="text-emerald-700 font-bold cursor-pointer">
+            <button onClick={() => setSuccess(null)} className="text-emerald-700 dark:text-emerald-300 font-bold cursor-pointer">
               ✕
             </button>
           </div>
         )}
 
         {error && (
-          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-semibold flex items-center justify-between">
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-2xl text-xs font-semibold flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Lock className="h-4 w-4 text-rose-600" />
               <span>{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="text-rose-700 font-bold cursor-pointer">
+            <button onClick={() => setError(null)} className="text-rose-700 dark:text-rose-300 font-bold cursor-pointer">
               ✕
             </button>
           </div>
@@ -107,44 +104,44 @@ export default function ParentAccountPage() {
         <div className="grid grid-cols-12 gap-6">
           
           {/* Parent Profile Card (Col 6) */}
-          <div className="col-span-12 lg:col-span-6 bg-white border border-slate-200/80 rounded-[32px] p-8 shadow-2xs space-y-6">
+          <div className="col-span-12 lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-8 shadow-2xs space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                 {user?.username ? user.username.charAt(0).toUpperCase() : 'P'}
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">{user?.username || 'Parent Profile'}</h3>
-                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{user?.username || 'Parent Profile'}</h3>
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/40">
                   Primary Guardian
                 </span>
               </div>
             </div>
 
-            <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between text-xs py-2">
-                <span className="font-semibold text-slate-500">Role Authority</span>
-                <span className="font-bold text-slate-900">PARENT</span>
+                <span className="font-semibold text-slate-500 dark:text-slate-400">Role Authority</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">PARENT</span>
               </div>
               <div className="flex items-center justify-between text-xs py-2">
-                <span className="font-semibold text-slate-500">Protection Status</span>
-                <span className="font-bold text-emerald-600 flex items-center gap-1">
+                <span className="font-semibold text-slate-500 dark:text-slate-400">Protection Status</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <Shield className="h-3.5 w-3.5" /> Active
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs py-2">
-                <span className="font-semibold text-slate-500">Linked Children</span>
-                <span className="font-bold text-slate-900">{kids.length} Student Profiles</span>
+                <span className="font-semibold text-slate-500 dark:text-slate-400">Linked Children</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">{kids.length} Student Profiles</span>
               </div>
             </div>
           </div>
 
           {/* Add Child Profile Bento Box (Col 6) */}
-          <div className="col-span-12 lg:col-span-6 bg-white border border-slate-200/80 rounded-[32px] p-8 shadow-2xs space-y-5">
-            <div className="flex items-center gap-2 text-indigo-600">
-              <UserPlus className="h-5 w-5 text-indigo-600" />
-              <h3 className="text-base font-bold text-slate-900">Add Child Profile</h3>
+          <div className="col-span-12 lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-8 shadow-2xs space-y-5">
+            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <UserPlus className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Add Child Profile</h3>
             </div>
-            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-medium leading-relaxed">
               Create a managed student profile for your child. They will receive automated eye break reminders and category restrictions.
             </p>
 
@@ -154,7 +151,7 @@ export default function ParentAccountPage() {
                 placeholder="Child Username (e.g. Alex)"
                 value={newKidUsername}
                 onChange={(e) => setNewKidUsername(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />
               <input
@@ -162,7 +159,7 @@ export default function ParentAccountPage() {
                 placeholder="Create Password"
                 value={newKidPassword}
                 onChange={(e) => setNewKidPassword(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />
 
@@ -178,32 +175,32 @@ export default function ParentAccountPage() {
           </div>
 
           {/* Linked Child Accounts Table (Col 12) */}
-          <div className="col-span-12 bg-white border border-slate-200/80 rounded-[32px] p-8 shadow-2xs space-y-4">
+          <div className="col-span-12 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-8 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-900">
-                <Users className="h-5 w-5 text-indigo-600" />
+              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <h3 className="text-base font-bold">Managed Child Accounts</h3>
               </div>
             </div>
 
             <div className="space-y-3">
               {kids.length === 0 ? (
-                <div className="text-center py-8 text-xs text-slate-400 font-semibold bg-slate-50/40 border border-slate-100/50 rounded-2xl">
+                <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 font-semibold bg-slate-50/40 dark:bg-slate-800/40 border border-slate-100/50 dark:border-slate-800 rounded-2xl">
                   No managed child accounts yet. Create one above to get started.
                 </div>
               ) : (
                 kids.map((kid) => (
                   <div
                     key={kid.id}
-                    className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex items-center justify-between"
+                    className="bg-slate-50/70 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm">
                         {kid.username ? kid.username.charAt(0).toUpperCase() : 'C'}
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">{kid.username}</h4>
-                        <p className="text-[10px] text-slate-400 font-medium">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{kid.username}</h4>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                           Device: Managed Device
                         </p>
                       </div>
@@ -212,14 +209,14 @@ export default function ParentAccountPage() {
                     <div className="flex items-center gap-3">
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
                         kid.is_locked
-                          ? 'bg-rose-50 text-rose-700 border-rose-100'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                          ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800/50'
+                          : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50'
                       }`}>
                         {kid.is_locked ? 'Locked' : 'Active'}
                       </span>
                       <button
                         onClick={() => router.push('/parent/restrictions')}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 p-2 rounded-xl hover:bg-indigo-50 transition-colors cursor-pointer"
+                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
                       >
                         Configure Restrictions →
                       </button>

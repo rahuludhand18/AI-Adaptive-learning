@@ -8,12 +8,10 @@ import MorsePatternModal from '@/components/parent/MorsePatternModal';
 import {
   BookOpen,
   Compass,
-  FileText,
   Plus,
   Clock,
   Eye,
   Smartphone,
-  CheckCircle,
   Video
 } from 'lucide-react';
 
@@ -36,7 +34,7 @@ export default function ManageRestrictionsPage() {
       category: 'Educational Platform',
       icon: 'book',
       allowed: true,
-      color: 'bg-indigo-50 text-indigo-600',
+      color: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400',
     },
     {
       id: '2',
@@ -44,7 +42,7 @@ export default function ManageRestrictionsPage() {
       category: 'General Knowledge',
       icon: 'compass',
       allowed: true,
-      color: 'bg-amber-50 text-amber-700',
+      color: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400',
     },
     {
       id: '3',
@@ -52,7 +50,7 @@ export default function ManageRestrictionsPage() {
       category: 'Video Content',
       icon: 'video',
       allowed: false,
-      color: 'bg-teal-50 text-teal-600',
+      color: 'bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400',
     },
   ]);
 
@@ -78,7 +76,7 @@ export default function ManageRestrictionsPage() {
       category: newSite.category,
       icon: 'book',
       allowed: newSite.allowed,
-      color: 'bg-indigo-50 text-indigo-600',
+      color: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400',
     };
     setWebsites((prev) => [...prev, newItem]);
   };
@@ -96,18 +94,18 @@ export default function ManageRestrictionsPage() {
         
         {/* Title & Description Header */}
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             Manage Restrictions
           </h1>
-          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
             Configure safety boundaries and digital well-being for your child's learning journey.
           </p>
         </div>
 
         {saveSuccess && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-semibold flex items-center justify-between animate-in fade-in duration-200">
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-semibold flex items-center justify-between animate-in fade-in duration-200">
             <span>{saveSuccess}</span>
-            <button onClick={() => setSaveSuccess(null)} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
+            <button onClick={() => setSaveSuccess(null)} className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 cursor-pointer">
               ✕
             </button>
           </div>
@@ -117,11 +115,11 @@ export default function ManageRestrictionsPage() {
         <div className="grid grid-cols-12 gap-6">
           
           {/* Left Column: Allowed Content & Websites Card (Col 7) */}
-          <div className="col-span-12 lg:col-span-7 bg-white border border-slate-200/80 rounded-[32px] p-8 shadow-2xs space-y-6">
+          <div className="col-span-12 lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-8 shadow-2xs space-y-6">
             
             {/* Allowed Content Header */}
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">Allowed content & websites</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Allowed content & websites</h3>
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
@@ -141,15 +139,15 @@ export default function ManageRestrictionsPage() {
                 return (
                   <div
                     key={site.id}
-                    className="bg-slate-50/60 border border-slate-100/80 rounded-2xl p-4 flex items-center justify-between transition-all"
+                    className="bg-slate-50/60 dark:bg-slate-800/60 border border-slate-100/80 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between transition-all"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-2xl ${site.color} flex items-center justify-center shrink-0`}>
                         <IconComp className="h-5 w-5" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">{site.name}</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">{site.category}</p>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{site.name}</h4>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{site.category}</p>
                       </div>
                     </div>
 
@@ -157,7 +155,7 @@ export default function ManageRestrictionsPage() {
                     <button
                       onClick={() => toggleWebsite(site.id)}
                       className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                        site.allowed ? 'bg-indigo-600' : 'bg-slate-200'
+                        site.allowed ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
                       }`}
                     >
                       <span
@@ -172,8 +170,8 @@ export default function ManageRestrictionsPage() {
             </div>
 
             {/* Content Filtering Intensity Section */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <h4 className="text-xs font-bold text-slate-800">Content Filtering Intensity</h4>
+            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Content Filtering Intensity</h4>
 
               <div className="grid grid-cols-3 gap-3">
                 {(['Standard', 'Strict', 'Curated Only'] as const).map((level) => (
@@ -182,8 +180,8 @@ export default function ManageRestrictionsPage() {
                     onClick={() => setFilterIntensity(level)}
                     className={`py-3 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       filterIntensity === level
-                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-600 shadow-2xs'
-                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                        ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     {level}
@@ -198,16 +196,16 @@ export default function ManageRestrictionsPage() {
           <div className="col-span-12 lg:col-span-5 space-y-6">
             
             {/* Daily Time Limit Card */}
-            <div className="bg-white border border-slate-200/80 rounded-[32px] p-6 shadow-2xs space-y-5">
-              <div className="flex items-center gap-2 text-slate-800">
-                <Clock className="h-5 w-5 text-indigo-600" />
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-6 shadow-2xs space-y-5">
+              <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 <h3 className="text-sm font-bold">Daily time limit</h3>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-extrabold text-indigo-600">{timeLimit}</span>
-                  <span className="text-sm font-bold text-slate-500">hours per day</span>
+                  <span className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">{timeLimit}</span>
+                  <span className="text-sm font-bold text-slate-500 dark:text-slate-400">hours per day</span>
                 </div>
 
                 {/* Range Slider */}
@@ -219,32 +217,32 @@ export default function ManageRestrictionsPage() {
                     step={1}
                     value={timeLimit}
                     onChange={(e) => setTimeLimit(Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500">
                     <span>0h</span>
                     <span>6h</span>
                     <span>12h</span>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-relaxed">
                   The app will automatically lock and display a "Rest Time" screen once the limit is reached.
                 </p>
               </div>
             </div>
 
             {/* Eye Break & Morse Code Pattern Card */}
-            <div className="bg-white border border-slate-200/80 rounded-[32px] p-6 shadow-2xs space-y-5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-6 shadow-2xs space-y-5">
               
               {/* 20-minute Eye-break reminders */}
               <div className="flex justify-between items-start gap-4">
                 <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-teal-600" />
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                     <span>20-minute Eye-break reminders</span>
                   </h4>
-                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-relaxed">
                     Encourages the 20-20-20 rule to reduce digital eye strain.
                   </p>
                 </div>
@@ -253,7 +251,7 @@ export default function ManageRestrictionsPage() {
                 <button
                   onClick={() => setEyeBreak(!eyeBreak)}
                   className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                    eyeBreak ? 'bg-teal-500' : 'bg-slate-200'
+                    eyeBreak ? 'bg-teal-500' : 'bg-slate-200 dark:bg-slate-700'
                   }`}
                 >
                   <span
@@ -265,10 +263,10 @@ export default function ManageRestrictionsPage() {
               </div>
 
               {/* Morse Code Pattern Row */}
-              <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-slate-900">Set/change Morse code pattern</h4>
-                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Set/change Morse code pattern</h4>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-relaxed">
                     A tactile way for parents to bypass restrictions without using a keyboard.
                   </p>
                 </div>
@@ -276,9 +274,9 @@ export default function ManageRestrictionsPage() {
                 {/* Dotted Border Button */}
                 <button
                   onClick={() => setIsMorseModalOpen(true)}
-                  className="w-full border-2 border-dashed border-amber-800 text-amber-900 bg-amber-50/30 hover:bg-amber-50/70 p-3.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full border-2 border-dashed border-amber-800 dark:border-amber-600 text-amber-900 dark:text-amber-300 bg-amber-50/30 dark:bg-amber-950/30 hover:bg-amber-50/70 dark:hover:bg-amber-950/50 p-3.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  <Smartphone className="h-4 w-4 text-amber-800" />
+                  <Smartphone className="h-4 w-4 text-amber-800 dark:text-amber-400" />
                   <span>Configure Pattern</span>
                 </button>
               </div>
@@ -290,10 +288,10 @@ export default function ManageRestrictionsPage() {
         </div>
 
         {/* Bottom Action Footer Bar */}
-        <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-slate-200/80 px-8 py-4 flex items-center justify-between z-20 shadow-md">
+        <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-8 py-4 flex items-center justify-between z-20 shadow-md">
           <button
             onClick={() => router.push('/parent/dashboard')}
-            className="py-2.5 px-6 rounded-2xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="py-2.5 px-6 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             Discard
           </button>

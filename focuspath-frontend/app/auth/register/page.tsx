@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { apiRequest } from '@/lib/api';
-import { Brain, UserPlus, Mail, KeyRound, User as UserIcon } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { UserPlus, Mail, KeyRound, User as UserIcon } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,8 +40,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 flex items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-[460px] rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
+    <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] flex items-center justify-center p-6 font-sans text-slate-800 dark:text-slate-100 transition-colors relative">
+      {/* Top Right Floating Theme Toggle */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle variant="icon" />
+      </div>
+
+      <div className="w-full max-w-[460px] rounded-[32px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm space-y-6">
         {/* Logo and Header */}
         <div className="flex flex-col items-center text-center space-y-2">
           <Link href="/" className="flex items-center justify-center transition-transform hover:scale-105">
@@ -51,20 +56,20 @@ export default function RegisterPage() {
               className="h-16 w-auto object-contain"
             />
           </Link>
-          <h2 className="text-xl font-bold text-slate-800">Create Your Account</h2>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Create Your Account</h2>
+          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
             Choose FocusPath Role
           </p>
         </div>
 
         {/* Error / Success Alerts */}
         {error && (
-          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-medium leading-relaxed">
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-2xl text-xs font-medium leading-relaxed">
             {error}
           </div>
         )}
         {success && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-medium leading-relaxed">
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-medium leading-relaxed">
             Registration successful! Redirecting to login...
           </div>
         )}
@@ -79,7 +84,7 @@ export default function RegisterPage() {
               className={`py-3 px-4 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                 role === 'ADULT'
                   ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-slate-200 hover:bg-slate-50 text-slate-500'
+                  : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
               }`}
             >
               ADULT MODE
@@ -90,7 +95,7 @@ export default function RegisterPage() {
               className={`py-3 px-4 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                 role === 'PARENT'
                   ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-slate-200 hover:bg-slate-50 text-slate-500'
+                  : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
               }`}
             >
               PARENT MODE
@@ -98,51 +103,51 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
               Username
             </label>
             <div className="relative">
-              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Choose username"
-                className="w-full rounded-2xl border border-slate-200 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
-                className="w-full rounded-2xl border border-slate-200 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
               Password
             </label>
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
-                className="w-full rounded-2xl border border-slate-200 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />
             </div>
@@ -159,8 +164,8 @@ export default function RegisterPage() {
         </form>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 pt-4 text-center">
-          <span className="text-xs text-slate-400 font-semibold">
+        <div className="border-t border-slate-100 dark:border-slate-800 pt-4 text-center">
+          <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
             Already have an account?{' '}
             <Link href="/auth/login" className="text-primary hover:underline font-bold">
               Sign In

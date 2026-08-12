@@ -3,17 +3,15 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
 import { apiRequest } from '@/lib/api';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import {
-  Brain,
   Lock,
   ShieldAlert,
   KeyRound,
   User as UserIcon,
   GraduationCap,
-  Sparkles,
   BookOpen,
   ArrowLeft,
   Pin
@@ -89,10 +87,15 @@ function LoginContent() {
     }
   };
 
-  // If no mode is selected, show the selector screen (exactly matching the user image)
+  // If no mode is selected, show the selector screen
   if (loginMode === null) {
     return (
-      <div className="min-h-screen bg-slate-50/60 flex flex-col justify-between p-8 font-sans antialiased text-slate-800">
+      <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] flex flex-col justify-between p-6 sm:p-8 font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors relative">
+        {/* Top Right Floating Theme Toggle */}
+        <div className="absolute top-6 right-6 z-20">
+          <ThemeToggle variant="icon" />
+        </div>
+
         <div className="flex-1 flex flex-col items-center justify-center space-y-10">
           
           {/* Logo and Header */}
@@ -104,7 +107,7 @@ function LoginContent() {
                 className="h-20 sm:h-24 w-auto object-contain"
               />
             </Link>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               Plans that rebuild themselves.
             </p>
           </div>
@@ -118,20 +121,20 @@ function LoginContent() {
                 setError(null);
                 setLoginMode('adult');
               }}
-              className="rounded-[32px] border border-slate-200 bg-indigo-50/20 p-8 shadow-sm flex flex-col justify-between items-start text-left min-h-[220px] hover:border-indigo-600/30 transition-all group cursor-pointer"
+              className="rounded-[32px] border border-slate-200 dark:border-slate-800 bg-indigo-50/20 dark:bg-indigo-950/20 p-8 shadow-sm flex flex-col justify-between items-start text-left min-h-[220px] hover:border-indigo-600/40 transition-all group cursor-pointer"
             >
-              <div className="bg-white text-indigo-600 p-4 rounded-2xl shadow-sm border border-slate-100">
+              <div className="bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
                 <GraduationCap className="h-6 w-6" />
               </div>
               
               <div className="space-y-1 pt-6">
-                <h3 className="text-base font-bold text-indigo-600">Adult Mode</h3>
-                <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                <h3 className="text-base font-bold text-indigo-600 dark:text-indigo-400">Adult Mode</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold leading-relaxed">
                   Plan, track focus, and study smarter.
                 </p>
               </div>
-              <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide pt-4 block">
-                Tapping navigates to Adult Login (Indigo theme).
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide pt-4 block">
+                Adult & Parent authentication workspace.
               </span>
             </button>
 
@@ -141,43 +144,31 @@ function LoginContent() {
                 setError(null);
                 setLoginMode('kid');
               }}
-              className="rounded-[32px] border border-slate-200 bg-emerald-50/10 p-8 shadow-sm flex flex-col justify-between items-start text-left min-h-[220px] hover:border-emerald-600/30 transition-all group cursor-pointer relative overflow-hidden"
+              className="rounded-[32px] border border-slate-200 dark:border-slate-800 bg-emerald-50/10 dark:bg-emerald-950/20 p-8 shadow-sm flex flex-col justify-between items-start text-left min-h-[220px] hover:border-emerald-600/40 transition-all group cursor-pointer relative overflow-hidden"
             >
               <span className="absolute top-4 right-4 bg-orange-500 text-white text-[8px] font-black tracking-widest px-2.5 py-1 rounded-full uppercase">
                 FUN
               </span>
               
-              {/* Soft watermark illustration of a robot in bottom right */}
-              <div className="absolute right-4 bottom-4 w-12 h-12 text-slate-100 opacity-20 pointer-events-none">
-                <svg viewBox="0 0 100 100" fill="currentColor">
-                  <rect x="20" y="30" width="60" height="45" rx="10" />
-                  <circle cx="35" cy="50" r="5" fill="#000" />
-                  <circle cx="65" cy="50" r="5" fill="#000" />
-                  <rect x="40" y="65" width="20" height="5" />
-                  <line x1="50" y1="30" x2="50" y2="15" stroke="currentColor" strokeWidth="6" />
-                  <circle cx="50" cy="15" r="5" />
-                </svg>
-              </div>
-
-              <div className="bg-white text-emerald-600 p-4 rounded-2xl shadow-sm border border-slate-100">
+              <div className="bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
                 <BookOpen className="h-6 w-6" />
               </div>
 
               <div className="space-y-1 pt-6">
-                <h3 className="text-base font-bold text-emerald-600">Kid's Mode</h3>
-                <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                <h3 className="text-base font-bold text-emerald-600 dark:text-emerald-400">Kid's Mode</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-400 font-semibold leading-relaxed">
                   Fun, guided study time.
                 </p>
               </div>
-              <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide pt-4 block">
-                Tapping navigates to Parent Login (Indigo theme) for authentication.
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide pt-4 block">
+                Guided interactive student portal.
               </span>
             </button>
 
           </div>
 
           {/* Parental PIN disclaimer */}
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
             <Pin className="h-3.5 w-3.5" />
             Parents can enable Kid's Mode with a PIN
           </div>
@@ -185,9 +176,9 @@ function LoginContent() {
 
         {/* Bottom Signup Link */}
         <div className="text-center pt-6">
-          <span className="text-xs text-slate-400 font-semibold">
+          <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
             Need an account?{' '}
-            <Link href="/auth/register" className="text-indigo-600 hover:underline font-bold">
+            <Link href="/auth/register" className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold">
               Sign Up
             </Link>
           </span>
@@ -198,8 +189,13 @@ function LoginContent() {
 
   // Credentials Entry Form Screen (displayed after selecting a mode)
   return (
-    <div className="min-h-screen bg-slate-50/60 flex items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-[460px] rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm space-y-6">
+    <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] flex items-center justify-center p-6 font-sans text-slate-800 dark:text-slate-100 transition-colors relative">
+      {/* Top Right Floating Theme Toggle */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle variant="icon" />
+      </div>
+
+      <div className="w-full max-w-[460px] rounded-[32px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm space-y-6">
         
         {/* Back Button */}
         <button
@@ -207,7 +203,7 @@ function LoginContent() {
             setError(null);
             setLoginMode(null);
           }}
-          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -222,10 +218,10 @@ function LoginContent() {
               className="h-16 w-auto object-contain"
             />
           </Link>
-          <h2 className="text-xl font-bold text-slate-800">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
             Sign In – {loginMode === 'kid' ? "Kid's Mode" : 'Adult/Parent'}
           </h2>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
             {loginMode === 'kid' ? 'Fun Guided Study Space' : 'Adaptive Workspace'}
           </p>
         </div>
@@ -234,8 +230,8 @@ function LoginContent() {
         {error && (
           <div className={`p-4 rounded-2xl flex gap-3 items-start border text-sm ${
             locked 
-              ? 'bg-amber-50 text-amber-700 border-amber-200' 
-              : 'bg-rose-50 text-rose-700 border-rose-200'
+              ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' 
+              : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
           }`}>
             {locked ? <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5" /> : <Lock className="h-5 w-5 shrink-0 mt-0.5" />}
             <div className="space-y-1">
@@ -248,20 +244,20 @@ function LoginContent() {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
               Username
             </label>
             <div className="relative">
-              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter username"
-                className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition-all font-medium bg-slate-50/20 ${
+                className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${
                   loginMode === 'kid'
-                    ? 'border-slate-200 focus:border-emerald-500/40 focus:ring-emerald-500/20'
-                    : 'border-slate-200 focus:border-indigo-600/40 focus:ring-indigo-600/20'
+                    ? 'border-slate-200 dark:border-slate-700 focus:border-emerald-500/60 focus:ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-700 focus:border-indigo-600/60 focus:ring-indigo-600/20'
                 }`}
                 required
               />
@@ -269,20 +265,20 @@ function LoginContent() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
               Password
             </label>
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition-all font-medium bg-slate-50/20 ${
+                className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${
                   loginMode === 'kid'
-                    ? 'border-slate-200 focus:border-emerald-500/40 focus:ring-emerald-500/20'
-                    : 'border-slate-200 focus:border-indigo-600/40 focus:ring-indigo-600/20'
+                    ? 'border-slate-200 dark:border-slate-700 focus:border-emerald-500/60 focus:ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-700 focus:border-indigo-600/60 focus:ring-indigo-600/20'
                 }`}
                 required
               />
@@ -303,10 +299,10 @@ function LoginContent() {
         </form>
 
         {/* Footer info */}
-        <div className="border-t border-slate-100 pt-4 text-center">
-          <span className="text-xs text-slate-400 font-semibold">
+        <div className="border-t border-slate-100 dark:border-slate-800 pt-4 text-center">
+          <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
             Need an account?{' '}
-            <Link href="/auth/register" className="text-indigo-600 hover:underline font-bold">
+            <Link href="/auth/register" className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold">
               Sign Up
             </Link>
           </span>
@@ -318,7 +314,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-sans">Loading login...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] flex items-center justify-center font-sans">Loading login...</div>}>
       <LoginContent />
     </Suspense>
   );

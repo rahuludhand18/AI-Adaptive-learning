@@ -85,25 +85,25 @@ export default function AdultOnboardingPage() {
   const getSubjectIcon = (iconName: string) => {
     switch (iconName) {
       case 'Sigma':
-        return <Sigma className="w-5 h-5 text-indigo" />;
+        return <Sigma className="w-5 h-5 text-indigo dark:text-indigo-400" />;
       case 'Microscope':
-        return <Microscope className="w-5 h-5 text-amber-600" />;
+        return <Microscope className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
       default:
-        return <BookOpen className="w-5 h-5 text-teal" />;
+        return <BookOpen className="w-5 h-5 text-teal dark:text-teal-400" />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col font-sans antialiased text-textPrimary">
+    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
       <TopNav />
 
       <PageContainer>
         {/* Header Title */}
         <div className="space-y-1 mb-2">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary dark:text-slate-100 tracking-tight">
             {COPY.onboarding.heading}
           </h1>
-          <p className="text-sm text-textSecondary font-normal">
+          <p className="text-sm text-textSecondary dark:text-slate-400 font-normal">
             {COPY.onboarding.subheading}
           </p>
         </div>
@@ -122,26 +122,26 @@ export default function AdultOnboardingPage() {
               }}
               onDragLeave={() => setIsDragOver(false)}
               onDrop={handleDrop}
-              className={`bg-white rounded-2xl p-6 border-2 transition-all shadow-card flex flex-col items-center text-center ${
-                isDragOver ? 'border-indigo bg-indigo-light/20 scale-[1.01]' : 'border-border'
+              className={`bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 transition-all shadow-card flex flex-col items-center text-center ${
+                isDragOver ? 'border-indigo bg-indigo-light/20 scale-[1.01]' : 'border-border dark:border-slate-800'
               }`}
             >
-              <div className="w-12 h-12 rounded-2xl bg-indigo-light text-indigo flex items-center justify-center mb-3 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-light dark:bg-indigo-950/50 text-indigo dark:text-indigo-400 flex items-center justify-center mb-3 shadow-sm border border-indigo-100 dark:border-indigo-900/40">
                 <UploadCloud className="w-6 h-6" />
               </div>
 
-              <h2 className="text-base font-bold text-textPrimary">
+              <h2 className="text-base font-bold text-textPrimary dark:text-slate-100">
                 {COPY.onboarding.uploadTitle}
               </h2>
-              <p className="text-xs text-textSecondary mt-1 max-w-xs">
+              <p className="text-xs text-textSecondary dark:text-slate-400 mt-1 max-w-xs">
                 {COPY.onboarding.uploadSubtitle}
               </p>
 
               {/* Format badges */}
               <div className="flex items-center space-x-2 my-3">
-                <span className="text-[11px] font-semibold bg-indigo-light text-indigo px-2.5 py-0.5 rounded-full">.pdf</span>
-                <span className="text-[11px] font-semibold bg-indigo-light text-indigo px-2.5 py-0.5 rounded-full">.jpg</span>
-                <span className="text-[11px] font-semibold bg-indigo-light text-indigo px-2.5 py-0.5 rounded-full">.png</span>
+                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.pdf</span>
+                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.jpg</span>
+                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.png</span>
               </div>
 
               {/* Upload Input & Button */}
@@ -158,24 +158,24 @@ export default function AdultOnboardingPage() {
 
               {/* AI Extraction Status Indicator */}
               {isParsingSyllabus ? (
-                <div className="mt-4 flex items-center space-x-2 text-xs text-indigo font-bold bg-indigo-light/60 py-2 px-4 rounded-xl animate-pulse">
+                <div className="mt-4 flex items-center space-x-2 text-xs text-indigo dark:text-indigo-400 font-bold bg-indigo-light/60 dark:bg-indigo-950/50 py-2 px-4 rounded-xl animate-pulse">
                   <Loader2 className="w-4 h-4 animate-spin text-indigo" />
                   <span>Extracting subjects & exam deadlines with AI...</span>
                 </div>
               ) : uploadedFileName ? (
                 <div className="mt-4 flex flex-col items-center space-y-1">
-                  <div className="flex items-center space-x-1.5 text-xs text-emerald-600 font-bold bg-emerald-50 py-1.5 px-3 rounded-xl border border-emerald-200">
+                  <div className="flex items-center space-x-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/50 py-1.5 px-3 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>{uploadedFileName} parsed successfully!</span>
                   </div>
-                  <span className="text-[10px] text-textSecondary">Extracted course milestones into Planned Subjects</span>
+                  <span className="text-[10px] text-textSecondary dark:text-slate-400">Extracted course milestones into Planned Subjects</span>
                 </div>
               ) : null}
             </div>
 
             {/* Add Subjects Manually Card */}
-            <div className="bg-white rounded-2xl p-6 border border-border shadow-card space-y-4">
-              <h3 className="text-xs font-bold text-textSecondary uppercase tracking-wider">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card space-y-4">
+              <h3 className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider">
                 {COPY.onboarding.addManually}
               </h3>
 
@@ -185,20 +185,20 @@ export default function AdultOnboardingPage() {
                   placeholder={COPY.onboarding.subjectPlaceholder}
                   value={newSubjectName}
                   onChange={(e) => setNewSubjectName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-indigo-light/30 border border-border rounded-xl text-xs text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo transition-all font-medium"
+                  className="w-full px-3.5 py-2.5 bg-indigo-light/30 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo transition-all font-medium"
                 />
 
                 <div className="flex items-center space-x-3">
                   <select
                     value={newPriority}
                     onChange={(e) => setNewPriority(Number(e.target.value))}
-                    className="flex-1 px-3.5 py-2.5 bg-indigo-light/30 border border-border rounded-xl text-xs font-semibold text-textPrimary focus:outline-none focus:ring-2 focus:ring-indigo transition-all cursor-pointer"
+                    className="flex-1 px-3.5 py-2.5 bg-indigo-light/30 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs font-semibold text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo transition-all cursor-pointer"
                   >
-                    <option value={5}>Priority 5 (High)</option>
-                    <option value={4}>Priority 4 (Medium-High)</option>
-                    <option value={3}>Priority 3 (Medium)</option>
-                    <option value={2}>Priority 2 (Normal)</option>
-                    <option value={1}>Priority 1 (Low)</option>
+                    <option value={5} className="dark:bg-slate-900">Priority 5 (High)</option>
+                    <option value={4} className="dark:bg-slate-900">Priority 4 (Medium-High)</option>
+                    <option value={3} className="dark:bg-slate-900">Priority 3 (Medium)</option>
+                    <option value={2} className="dark:bg-slate-900">Priority 2 (Normal)</option>
+                    <option value={1} className="dark:bg-slate-900">Priority 1 (Low)</option>
                   </select>
 
                   <button
@@ -216,14 +216,14 @@ export default function AdultOnboardingPage() {
 
           {/* Right Column: Planned Subjects List (7 cols) */}
           <div className="lg:col-span-7">
-            <div className="bg-white rounded-2xl p-6 border border-border shadow-card h-full flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card h-full flex flex-col justify-between">
               
               <div>
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/60">
-                  <h2 className="text-base font-bold text-textPrimary">
+                <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/60 dark:border-slate-800">
+                  <h2 className="text-base font-bold text-textPrimary dark:text-slate-100">
                     {COPY.onboarding.plannedTitle}
                   </h2>
-                  <span className="text-xs font-extrabold bg-indigo-light text-indigo px-3 py-1 rounded-full">
+                  <span className="text-xs font-extrabold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/40">
                     {subjects.length} Added
                   </span>
                 </div>
@@ -233,14 +233,14 @@ export default function AdultOnboardingPage() {
                   {subjects.map((sub) => (
                     <div
                       key={sub.id}
-                      className="p-4 rounded-xl border border-border/80 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all flex items-center justify-between"
+                      className="p-4 rounded-xl border border-border/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800/80 hover:shadow-sm transition-all flex items-center justify-between"
                     >
                       <div className="flex items-center space-x-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-border dark:border-slate-700 flex items-center justify-center shadow-sm">
                           {getSubjectIcon(sub.icon)}
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-textPrimary">{sub.name}</h4>
+                          <h4 className="text-sm font-bold text-textPrimary dark:text-slate-100">{sub.name}</h4>
                           {/* Priority Stars Display */}
                           <div className="flex items-center space-x-1 mt-0.5">
                             {[1, 2, 3, 4, 5].map((star) => (
@@ -249,7 +249,7 @@ export default function AdultOnboardingPage() {
                                 className={`w-3 h-3 ${
                                   star <= sub.priority
                                     ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-200'
+                                    : 'text-slate-200 dark:text-slate-700'
                                 }`}
                               />
                             ))}
@@ -259,14 +259,14 @@ export default function AdultOnboardingPage() {
 
                       {/* Deadline Date & Delete */}
                       <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-1.5 text-xs text-textSecondary bg-white py-1.5 px-2.5 rounded-lg border border-border">
-                          <span className="text-[10px] font-bold uppercase text-textSecondary">DEADLINE</span>
-                          <span className="font-semibold text-textPrimary">{sub.deadline}</span>
+                        <div className="flex items-center space-x-1.5 text-xs text-textSecondary dark:text-slate-400 bg-white dark:bg-slate-800 py-1.5 px-2.5 rounded-lg border border-border dark:border-slate-700">
+                          <span className="text-[10px] font-bold uppercase text-textSecondary dark:text-slate-400">DEADLINE</span>
+                          <span className="font-semibold text-textPrimary dark:text-slate-200">{sub.deadline}</span>
                           <Calendar className="w-3.5 h-3.5 text-textSecondary ml-1" />
                         </div>
                         <button
                           onClick={() => removeSubject(sub.id)}
-                          className="p-2 text-textSecondary hover:text-danger hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-textSecondary dark:text-slate-400 hover:text-danger dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -277,11 +277,11 @@ export default function AdultOnboardingPage() {
               </div>
 
               {/* Graphic Decoration Box at bottom center */}
-              <div className="mt-8 pt-4 border-t border-border/60 flex flex-col items-center justify-center">
-                <div className="w-24 h-12 rounded-xl bg-indigo-light/50 border border-indigo/20 flex items-center justify-center mb-2">
-                  <Sparkles className="w-6 h-6 text-indigo" />
+              <div className="mt-8 pt-4 border-t border-border/60 dark:border-slate-800 flex flex-col items-center justify-center">
+                <div className="w-24 h-12 rounded-xl bg-indigo-light/50 dark:bg-indigo-950/40 border border-indigo/20 flex items-center justify-center mb-2">
+                  <Sparkles className="w-6 h-6 text-indigo dark:text-indigo-400" />
                 </div>
-                <p className="text-xs text-textSecondary font-medium text-center">
+                <p className="text-xs text-textSecondary dark:text-slate-400 font-medium text-center">
                   FocusPath AI balances workload based on priority stars & deadline proximity.
                 </p>
               </div>
@@ -292,19 +292,19 @@ export default function AdultOnboardingPage() {
         </div>
 
         {/* Bottom Full-Width Indigo Tinted Panel */}
-        <div className="bg-indigo-light/60 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-sm space-y-6">
+        <div className="bg-indigo-light/60 dark:bg-indigo-950/30 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-extrabold text-textPrimary">
+              <h3 className="text-lg font-extrabold text-textPrimary dark:text-slate-100">
                 {COPY.onboarding.hoursTitle}
               </h3>
-              <p className="text-xs text-textSecondary">
+              <p className="text-xs text-textSecondary dark:text-slate-400">
                 {COPY.onboarding.hoursSubtitle}
               </p>
             </div>
             
             {/* Big Hours Badge */}
-            <span className="text-4xl font-black text-indigo tracking-tight">
+            <span className="text-4xl font-black text-indigo dark:text-indigo-400 tracking-tight">
               {dailyHours}h
             </span>
           </div>
@@ -317,9 +317,9 @@ export default function AdultOnboardingPage() {
               max={12}
               value={dailyHours}
               onChange={(e) => setDailyHours(Number(e.target.value))}
-              className="w-full h-2 bg-white rounded-lg appearance-none cursor-pointer accent-indigo"
+              className="w-full h-2 bg-white dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo"
             />
-            <div className="flex justify-between text-xs text-textSecondary font-bold">
+            <div className="flex justify-between text-xs text-textSecondary dark:text-slate-400 font-bold">
               <span>1 Hour</span>
               <span>12 Hours</span>
             </div>
@@ -342,7 +342,7 @@ export default function AdultOnboardingPage() {
               )}
             </button>
 
-            <p className="text-[11px] text-textSecondary text-center">
+            <p className="text-[11px] text-textSecondary dark:text-slate-400 text-center">
               {COPY.onboarding.aiNote}
             </p>
           </div>

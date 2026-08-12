@@ -4,17 +4,13 @@ import { ReactNode, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import {
   Home,
   BookOpen,
   Trophy,
-  User,
-  Sparkles,
-  BarChart2,
-  HelpCircle,
   LogOut,
-  Layers,
-  Shield
+  GraduationCap
 } from 'lucide-react';
 
 interface KidLayoutProps {
@@ -30,24 +26,18 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
 
   const topNavItems = [
     { name: 'Home', href: '/kid/dashboard', icon: Home },
+    { name: 'Learn', href: '/kid/learn', icon: GraduationCap },
     { name: 'Story', href: '/kid/stories', icon: BookOpen },
     { name: 'Rewards', href: '/kid/rewards', icon: Trophy },
   ];
 
-  const sideNavItems = [
-    { name: 'Adult Mode', href: '/adult/dashboard', icon: User },
-    { name: 'Kid Mode', href: '/kid/dashboard', icon: Sparkles, active: true },
-    { name: 'Parent Mode', href: '/parent/dashboard', icon: Shield },
-    { name: 'Analytics', href: '/adult/analytics', icon: BarChart2 },
-  ];
-
-  const userInitial = user?.username ? user.username.slice(0, 2).toUpperCase() : 'JD';
+  const userInitial = user?.username ? user.username.slice(0, 2).toUpperCase() : 'KD';
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased flex flex-col">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 font-sans antialiased flex flex-col transition-colors">
       
       {/* Top Navbar */}
-      <header className="bg-white border-b border-slate-200/80 px-8 h-16 flex items-center justify-between sticky top-0 z-30 shrink-0 shadow-xs">
+      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-6 sm:px-8 h-16 flex items-center justify-between sticky top-0 z-30 shrink-0 shadow-xs transition-colors">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3">
           <Link href="/kid/dashboard" className="flex items-center group">
@@ -60,7 +50,7 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
         </div>
 
         {/* Center Nav Links with Icons */}
-        <nav className="flex items-center gap-8 h-full">
+        <nav className="hidden sm:flex items-center gap-6 md:gap-8 h-full">
           {topNavItems.map((item) => {
             const isActive = pathname === item.href;
             const IconComp = item.icon;
@@ -70,11 +60,11 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
                 onClick={() => router.push(item.href)}
                 className={`h-16 flex items-center gap-2 text-sm transition-colors cursor-pointer relative font-bold ${
                   isActive
-                    ? 'text-indigo-600 font-bold border-b-2 border-indigo-600'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-primary font-bold border-b-2 border-primary'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100'
                 }`}
               >
-                <IconComp className={`h-4.5 w-4.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                <IconComp className={`h-4.5 w-4.5 ${isActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`} />
                 <span>{item.name}</span>
               </button>
             );
@@ -82,11 +72,15 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
         </nav>
 
         {/* Right User Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
+          {/* Theme Toggle Button */}
+          <ThemeToggle />
+
           {/* Stars Points Badge */}
           <button
             onClick={() => router.push('/kid/rewards')}
-            className="bg-teal-100/80 border border-teal-200 text-teal-800 text-xs font-extrabold py-2 px-4 rounded-full flex items-center gap-1.5 shadow-2xs hover:bg-teal-200/80 transition-all cursor-pointer"
+            className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-extrabold py-2 px-3.5 sm:px-4 rounded-full flex items-center gap-1.5 shadow-2xs hover:bg-amber-100/80 dark:hover:bg-amber-900/60 transition-all cursor-pointer"
+            title="Star Balance"
           >
             <span className="text-amber-500 text-sm">★</span>
             <span>{starsCount}</span>
@@ -96,18 +90,19 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-sm ring-2 ring-indigo-600/20 hover:ring-indigo-600 transition-all cursor-pointer"
+              className="w-9 h-9 rounded-full bg-primary text-white font-bold text-xs flex items-center justify-center shadow-sm ring-2 ring-primary/20 dark:ring-primary/40 hover:ring-primary transition-all cursor-pointer"
+              title="Kid Profile"
             >
               {userInitial}
             </button>
 
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="p-2.5 border-b border-slate-100">
-                  <p className="text-xs font-bold text-slate-900 truncate">
+              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="p-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                     {user?.username || 'Kid Explorer'}
                   </p>
-                  <p className="text-[10px] font-semibold text-teal-600">Kid Mode Active</p>
+                  <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Kid Mode Active</p>
                 </div>
                 <button
                   onClick={() => {
@@ -115,9 +110,9 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
                     logout();
                     router.push('/auth/login');
                   }}
-                  className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer text-left"
                 >
-                  <LogOut className="h-4 w-4 text-rose-600" />
+                  <LogOut className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                   Log Out
                 </button>
               </div>
@@ -129,7 +124,7 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
       {/* Main Body Layout (Full Width Canvas) */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Main Content Area */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 sm:p-8">
           <div className="max-w-6xl mx-auto space-y-6">{children}</div>
         </main>
       </div>
