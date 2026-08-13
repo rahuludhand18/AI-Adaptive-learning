@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
@@ -9,6 +9,7 @@ import { ProgressRing } from '@/components/ui/ProgressRing';
 import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
 import { TimeBlock } from '@/services/focusApi';
+import { listTasks, createTask, taskToTimeBlock, timeBlockToTaskPayload } from '@/lib/plannerApi';
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
@@ -20,7 +21,23 @@ import {
 
 export default function AdultPlannerPage() {
   const router = useRouter();
-  const { timetable, addTimeBlock, startSession } = useFocusStore();
+  const { startSession } = useFocusStore();
+
+  // real tasks loaded from the backend, mapped into the UI's TimeBlock shape
+  const [blocks, setBlocks] = useState<TimeBlock[]>([]);
+
+  const loadBlocks = async () => {
+    try {
+      const tasks = await listTasks();
+      setBlocks(tasks.filter((t) => t.status !== 'ARCHIVED').map(taskToTimeBlock));
+    } catch {
+      // leave the grid empty if the request fails
+    }
+  };
+
+  useEffect(() => {
+    loadBlocks();
+  }, []);
 
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -42,17 +59,25 @@ export default function AdultPlannerPage() {
     { day: 'SUN', date: '18', index: 6 },
   ];
 
-  const handleCreateBlock = (e: React.FormEvent) => {
+  const handleCreateBlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!blockTitle.trim()) return;
-    addTimeBlock({
-      timeRange: blockTime,
-      title: blockTitle.trim(),
-      subtitle: blockSubtitle.trim() || 'Custom session',
-      status: 'upcoming',
-      type: blockType,
-      dayIndex: selectedDayIndex,
-    });
+    // map the modal input to a Task and persist it on the backend
+    try {
+      await createTask(
+        timeBlockToTaskPayload({
+          timeRange: blockTime,
+          title: blockTitle.trim(),
+          subtitle: blockSubtitle.trim() || 'Custom session',
+          status: 'upcoming',
+          type: blockType,
+          dayIndex: selectedDayIndex,
+        })
+      );
+      await loadBlocks();
+    } catch {
+      // ignore create errors for now; modal simply closes
+    }
     setBlockTitle('');
     setBlockSubtitle('');
     setIsModalOpen(false);
@@ -133,7 +158,7 @@ export default function AdultPlannerPage() {
         {viewMode === 'week' ? (
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3 pt-2">
             {days.map((dayItem) => {
-              const dayBlocks = timetable.filter((b) => b.dayIndex === dayItem.index);
+              const dayBlocks = blocks.filter((b) => b.dayIndex === dayItem.index);
 
               return (
                 <div key={dayItem.day} className="space-y-3">

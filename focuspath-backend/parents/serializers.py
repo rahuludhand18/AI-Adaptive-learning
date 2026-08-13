@@ -5,7 +5,7 @@ from users.serializers import UserSerializer
 class RestrictionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restriction
-        fields = ('id', 'child', 'daily_screen_time_limit', 'session_limit', 'eye_break_interval', 'whitelisted_websites', 'blacklisted_websites', 'blocked_apps')
+        fields = ('id', 'child', 'daily_screen_time_limit', 'session_limit', 'eye_break_interval', 'content_filter_intensity', 'morse_pattern', 'whitelisted_websites', 'blacklisted_websites', 'blocked_apps')
         read_only_fields = ('id', 'child')
 
 class ApprovalRequestSerializer(serializers.ModelSerializer):

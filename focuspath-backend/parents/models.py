@@ -10,6 +10,8 @@ class Restriction(models.Model):
     daily_screen_time_limit = models.IntegerField(default=120) # in minutes
     session_limit = models.IntegerField(default=45) # in minutes
     eye_break_interval = models.IntegerField(default=20) # in minutes
+    content_filter_intensity = models.CharField(max_length=20, default='Standard') # Standard/Strict/Curated Only
+    morse_pattern = models.CharField(max_length=32, blank=True, default='') # parent bypass pattern
     whitelisted_websites = models.JSONField(default=list)
     blacklisted_websites = models.JSONField(default=list)
     blocked_apps = models.JSONField(default=list)

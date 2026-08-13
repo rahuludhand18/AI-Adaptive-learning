@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import KidLayout from '@/components/layout/KidLayout';
+import { apiRequest } from '@/lib/api';
 import {
   BookOpen,
   Rocket,
@@ -100,12 +101,26 @@ export default function KidDashboardPage() {
     },
   ];
 
+  // load the child's real star balance on mount
+  useEffect(() => {
+    apiRequest<{ balance: number }>('/api/rewards/wallet/')
+      .then((w) => setStars(w.balance))
+      .catch(() => {});
+  }, []);
+
   // Daily Puzzle Handler
   const handleAnswerPuzzle = (optionId: number, isCorrect: boolean) => {
     if (puzzleAnswered !== null) return;
     setPuzzleAnswered(optionId);
     if (isCorrect) {
       setStars((prev) => prev + 10);
+      // persist the reward so the balance is real across the app
+      apiRequest<{ balance: number }>('/api/rewards/award/', {
+        method: 'POST',
+        body: JSON.stringify({ amount: 10, badge: 'Math Master' }),
+      })
+        .then((res) => setStars(res.balance))
+        .catch(() => {});
     }
   };
 
@@ -114,6 +129,12 @@ export default function KidDashboardPage() {
     if (claimedDailyPrize) return;
     setClaimedDailyPrize(true);
     setStars((prev) => prev + 15);
+    apiRequest<{ balance: number }>('/api/rewards/award/', {
+      method: 'POST',
+      body: JSON.stringify({ amount: 15 }),
+    })
+      .then((res) => setStars(res.balance))
+      .catch(() => {});
   };
 
   return (

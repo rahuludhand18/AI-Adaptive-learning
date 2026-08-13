@@ -39,7 +39,10 @@ export default function AdultReports() {
               </p>
             </div>
           </div>
-          <button className="flex items-center gap-2 bg-primary text-white py-3 px-5 rounded-full font-bold text-sm hover:bg-primary/95 transition-all shadow-sm cursor-pointer">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-primary text-white py-3 px-5 rounded-full font-bold text-sm hover:bg-primary/95 transition-all shadow-sm cursor-pointer"
+          >
             <Download className="h-4 w-4" />
             Export Monthly PDF
           </button>

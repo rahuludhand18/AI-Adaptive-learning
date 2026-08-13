@@ -1,13 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { StatCard } from '@/components/ui/StatCard';
 import { SUBJECT_COMPLETIONS } from '@/services/focusApi';
+import { apiRequest } from '@/lib/api';
 import { Flame, Sparkles, ArrowRight, Cpu } from 'lucide-react';
+
+interface AdultAnalytics {
+  completion_rate: number;
+  avg_focus_score: number;
+  total_study_minutes: number;
+  sessions: number;
+  weekly_focus: { day: string; score: number }[];
+}
 
 const INSIGHTS_TREND = [
   { day: 'Day 1', score: 68 },
@@ -21,6 +30,18 @@ const INSIGHTS_TREND = [
 
 export default function AdultAnalyticsPage() {
   const [timeframe, setTimeframe] = useState('Last 30 Days');
+  const [stats, setStats] = useState<AdultAnalytics | null>(null);
+  const [trend, setTrend] = useState(INSIGHTS_TREND);
+
+  // load the adult's real analytics summary
+  useEffect(() => {
+    apiRequest<AdultAnalytics>('/api/analytics/adult/')
+      .then((res) => {
+        setStats(res);
+        if (res.weekly_focus?.length) setTrend(res.weekly_focus);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
@@ -56,21 +77,21 @@ export default function AdultAnalyticsPage() {
         {/* Row of 3 Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Card 1: Total Deep Work */}
+          {/* Card 1: Total Deep Work (real study hours) */}
           <StatCard
             title="Total Deep Work"
-            value="124h"
-            trend={{ value: "12% from last month", isUp: true }}
+            value={stats ? `${Math.round((stats.total_study_minutes || 0) / 60)}h` : '—'}
+            subtitle={stats ? `${stats.sessions} sessions` : undefined}
           />
 
-          {/* Card 2: Avg. Daily Focus */}
+          {/* Card 2: Avg. Focus Score (real) */}
           <StatCard
-            title="Avg. Daily Focus"
-            value="4.2h"
-            subtitle="⏱ Peak performance: 10AM"
+            title="Avg. Focus Score"
+            value={stats ? `${stats.avg_focus_score}%` : '—'}
+            subtitle="⏱ Across all sessions"
           />
 
-          {/* Card 3: 14 Day Streak Card */}
+          {/* Card 3: Completion Card */}
           <div className="bg-indigo text-white rounded-2xl p-6 shadow-md flex flex-col justify-between relative overflow-hidden">
             {/* Gear/Brain outline decorative background */}
             <div className="absolute -right-6 -bottom-6 w-36 h-36 opacity-15 pointer-events-none">
@@ -84,11 +105,13 @@ export default function AdultAnalyticsPage() {
               <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
                 <Flame className="w-5 h-5 text-amber-300" />
               </div>
-              <h3 className="text-lg font-extrabold tracking-tight">14 Day Streak</h3>
+              <h3 className="text-lg font-extrabold tracking-tight">
+                {stats ? `${stats.completion_rate}% Complete` : 'Keep Going'}
+              </h3>
             </div>
 
             <p className="text-xs text-white/90 leading-relaxed mt-4 max-w-xs z-10">
-              You're in the top 5% of learners this week. Keep the momentum going!
+              Task completion across your plan. Keep the momentum going!
             </p>
           </div>
 
@@ -116,7 +139,7 @@ export default function AdultAnalyticsPage() {
           {/* Smooth Recharts Curve */}
           <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={INSIGHTS_TREND} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+              <AreaChart data={trend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="purpleGlow" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.25} />
