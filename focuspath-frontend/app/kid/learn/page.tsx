@@ -369,6 +369,13 @@ export default function KidLearnPage() {
       setStars((prev) => prev + 10);
       setTodayCompletedCount((prev) => prev + 1);
       setShowQuiz(true);
+      // persist the reward on the backend and reflect the real balance
+      apiRequest<{ balance: number }>('/api/rewards/award/', {
+        method: 'POST',
+        body: JSON.stringify({ amount: 10, badge: 'Story Explorer' }),
+      })
+        .then((res) => setStars(res.balance))
+        .catch(() => {});
     }
   };
 

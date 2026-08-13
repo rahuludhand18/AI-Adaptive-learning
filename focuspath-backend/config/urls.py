@@ -25,4 +25,6 @@ urlpatterns = [
     path('api/parents/', include('parents.urls')),
     path('api/rewards/', include('rewards.urls')),
     path('api/content/', include('content.urls')),
+    path('api/analytics/', include('analytics.urls')),
+    path('api/kids/', include('kids.urls')),
 ]

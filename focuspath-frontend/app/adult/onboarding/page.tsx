@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { apiRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -44,25 +45,33 @@ export default function AdultOnboardingPage() {
     setNewSubjectName('');
   };
 
-  const processSyllabusFile = (fileName: string) => {
-    setUploadedFileName(fileName);
+  const processSyllabusFile = (file: File) => {
+    setUploadedFileName(file.name);
     setIsParsingSyllabus(true);
 
-    // Simulate AI syllabus extraction
-    setTimeout(() => {
-      setIsParsingSyllabus(false);
-      addSubject({
-        name: 'AI & Neural Systems (Extracted)',
-        priority: 5,
-        deadline: '01/15/2024',
-        icon: 'Microscope',
-      });
-    }, 900);
+    // read the file text and parse subjects on the backend (text-based, not image OCR)
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const text = String(reader.result || '');
+      try {
+        const res = await apiRequest<{ subjects: { name: string }[] }>('/api/planner/syllabus-parse/', {
+          method: 'POST',
+          body: JSON.stringify({ text }),
+        });
+        res.subjects.forEach((s) => addSubject({ name: s.name, priority: 3, deadline: '', icon: 'BookOpen' }));
+      } catch {
+        // ignore parse errors; the user can still add subjects manually
+      } finally {
+        setIsParsingSyllabus(false);
+      }
+    };
+    reader.onerror = () => setIsParsingSyllabus(false);
+    reader.readAsText(file);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      processSyllabusFile(e.target.files[0].name);
+      processSyllabusFile(e.target.files[0]);
     }
   };
 
@@ -70,7 +79,7 @@ export default function AdultOnboardingPage() {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processSyllabusFile(e.dataTransfer.files[0].name);
+      processSyllabusFile(e.dataTransfer.files[0]);
     }
   };
 

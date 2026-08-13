@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut, CheckCircle2, Pause, Play, Brain, User, Smile, Users } from 'lucide-react';
 import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
-import { focusApi } from '@/services/focusApi';
+import { apiRequest } from '@/lib/api';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function AdultFocusSessionPage() {
@@ -21,6 +21,11 @@ export default function AdultFocusSessionPage() {
     endSession,
     tickSession,
   } = useFocusStore();
+
+  // start a real focus session on the backend so tab switches are counted against it
+  useEffect(() => {
+    apiRequest('/api/focus/session/start', { method: 'POST' }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!activeSession.blockId) {
@@ -42,7 +47,12 @@ export default function AdultFocusSessionPage() {
   const progressPct = Math.round((activeSession.elapsedSeconds / (activeSession.totalSeconds || 1)) * 100);
 
   const handleMarkComplete = async () => {
-    await focusApi.endSession(blockId);
+    // end the real focus session on the backend (returns the computed focus score)
+    try {
+      await apiRequest('/api/focus/session/end', { method: 'POST' });
+    } catch {
+      // ignore backend errors so the user can always finish the session
+    }
     endSession();
     router.push('/adult/dashboard');
   };

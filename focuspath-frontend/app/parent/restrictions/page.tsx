@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/layout/ParentLayout';
 import AddWebsiteModal from '@/components/parent/AddWebsiteModal';
 import MorsePatternModal from '@/components/parent/MorsePatternModal';
+import { apiRequest } from '@/lib/api';
 import {
   BookOpen,
   Compass,
@@ -22,6 +23,19 @@ interface WebsiteItem {
   icon: 'book' | 'compass' | 'video';
   allowed: boolean;
   color: string;
+}
+
+// Rebuild the UI website list from the backend's whitelist/blacklist string arrays.
+function buildWebsites(whitelist: string[], blacklist: string[]): WebsiteItem[] {
+  const mk = (name: string, allowed: boolean, i: number): WebsiteItem => ({
+    id: `${allowed ? 'w' : 'b'}-${i}`,
+    name,
+    category: 'Website',
+    icon: 'compass',
+    allowed,
+    color: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400',
+  });
+  return [...whitelist.map((n, i) => mk(n, true, i)), ...blacklist.map((n, i) => mk(n, false, i))];
 }
 
 export default function ManageRestrictionsPage() {
@@ -63,6 +77,39 @@ export default function ManageRestrictionsPage() {
   const [isMorseModalOpen, setIsMorseModalOpen] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
+  // real restriction wiring: target the parent's first child
+  const [childId, setChildId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const kids = await apiRequest<{ id: number; username: string }[]>('/api/parents/kids/');
+        if (!kids.length) {
+          setLoadError('Add a child account first to configure restrictions.');
+          return;
+        }
+        const cid = kids[0].id;
+        setChildId(cid);
+        const r = await apiRequest<{
+          daily_screen_time_limit: number; eye_break_interval: number;
+          content_filter_intensity?: string; morse_pattern?: string;
+          whitelisted_websites: string[]; blacklisted_websites: string[];
+        }>(`/api/parents/restrictions/${cid}/`);
+        setTimeLimit(Math.max(0, Math.round((r.daily_screen_time_limit ?? 180) / 60)));
+        setEyeBreak((r.eye_break_interval ?? 20) > 0);
+        if (r.content_filter_intensity === 'Standard' || r.content_filter_intensity === 'Strict' || r.content_filter_intensity === 'Curated Only') {
+          setFilterIntensity(r.content_filter_intensity);
+        }
+        if (r.morse_pattern) setMorsePattern(r.morse_pattern);
+        setWebsites(buildWebsites(r.whitelisted_websites || [], r.blacklisted_websites || []));
+      } catch {
+        setLoadError('Could not load restrictions. Please try again.');
+      }
+    })();
+  }, []);
+
   const toggleWebsite = (id: string) => {
     setWebsites((prev) =>
       prev.map((site) => (site.id === id ? { ...site, allowed: !site.allowed } : site))
@@ -81,11 +128,32 @@ export default function ManageRestrictionsPage() {
     setWebsites((prev) => [...prev, newItem]);
   };
 
-  const handleSaveChanges = () => {
-    setSaveSuccess('Safety boundaries and restrictions updated successfully!');
-    setTimeout(() => {
-      setSaveSuccess(null);
-    }, 3000);
+  const handleSaveChanges = async () => {
+    if (!childId) {
+      setLoadError('No child account selected.');
+      return;
+    }
+    setSaving(true);
+    setLoadError(null);
+    try {
+      await apiRequest(`/api/parents/restrictions/${childId}/`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          daily_screen_time_limit: timeLimit * 60,            // hours -> minutes
+          eye_break_interval: eyeBreak ? 20 : 0,              // toggle -> interval
+          content_filter_intensity: filterIntensity,
+          morse_pattern: morsePattern,
+          whitelisted_websites: websites.filter((w) => w.allowed).map((w) => w.name),
+          blacklisted_websites: websites.filter((w) => !w.allowed).map((w) => w.name),
+        }),
+      });
+      setSaveSuccess('Safety boundaries and restrictions updated successfully!');
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch {
+      setLoadError('Could not save changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,6 +176,12 @@ export default function ManageRestrictionsPage() {
             <button onClick={() => setSaveSuccess(null)} className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 cursor-pointer">
               ✕
             </button>
+          </div>
+        )}
+
+        {loadError && (
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-2xl text-xs font-semibold">
+            {loadError}
           </div>
         )}
 
@@ -298,9 +372,10 @@ export default function ManageRestrictionsPage() {
 
           <button
             onClick={handleSaveChanges}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 px-8 rounded-2xl shadow-sm transition-all cursor-pointer"
+            disabled={saving || !childId}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 px-8 rounded-2xl shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Changes
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
 

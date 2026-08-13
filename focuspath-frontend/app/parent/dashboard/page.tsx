@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/layout/ParentLayout';
+import { apiRequest } from '@/lib/api';
 import {
   Clock,
   Eye,
@@ -15,6 +16,17 @@ import {
 
 export default function ParentDashboardPage() {
   const router = useRouter();
+
+  // real per-child analytics (first linked child)
+  const [child, setChild] = useState<{ avg_focus_score: number; stars: number } | null>(null);
+  useEffect(() => {
+    apiRequest<{ children: { avg_focus_score: number; stars: number }[] }>('/api/analytics/parent/')
+      .then((res) => setChild(res.children?.[0] || null))
+      .catch(() => {});
+  }, []);
+  const focus = child?.avg_focus_score ?? 0;
+  const stars = child?.stars ?? 0;
+  const ringOffset = Math.round(264 * (1 - focus / 100));
 
   // Mock data matching the design mockup
   const dailyStudyData = [
@@ -68,14 +80,14 @@ export default function ParentDashboardPage() {
                   className="text-indigo-600 dark:text-indigo-500"
                   strokeWidth="10"
                   strokeDasharray="264"
-                  strokeDashoffset="31" // ~88% filled
+                  strokeDashoffset={ringOffset}
                   strokeLinecap="round"
                   stroke="currentColor"
                   fill="transparent"
                 />
               </svg>
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">88</span>
+                <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{focus}</span>
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider">SCORE</span>
               </div>
             </div>
@@ -189,7 +201,7 @@ export default function ParentDashboardPage() {
               <div>
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Stars Earned</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100">150</span>
+                  <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100">{stars}</span>
                   <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">total</span>
                 </div>
               </div>

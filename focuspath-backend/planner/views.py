@@ -113,10 +113,11 @@ class AIAcceptRebuiltView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # Step 8: Allow user acceptance
-        plan = request.session.get('proposed_rebuilt_plan', [])
+        # Step 8: Allow user acceptance. Prefer the plan sent in the request body
+        # (works for token-auth SPAs); fall back to the session copy if not provided.
+        plan = request.data.get('plan') or request.session.get('proposed_rebuilt_plan', [])
         if not plan:
-            return Response({"detail": "No rebuilt plan found in session to accept."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "No rebuilt plan found to accept."}, status=status.HTTP_400_BAD_REQUEST)
 
         updated_tasks = []
         for item in plan:
@@ -137,3 +138,25 @@ class AIAcceptRebuiltView(views.APIView):
             "detail": "Adaptive schedule accepted and updated successfully.",
             "tasks": updated_tasks
         }, status=status.HTTP_200_OK)
+
+
+class SyllabusParseView(views.APIView):
+    # Lightweight, honest syllabus helper: turns pasted syllabus TEXT into a list of
+    # subject names (one per line). This is text parsing, not image OCR.
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        text = request.data.get('text', '') or ''
+        seen = set()
+        subjects = []
+        for line in text.splitlines():
+            name = line.strip(' -*•\t')          # trim bullets/dashes/spaces
+            name = name.split(':')[0].split(' - ')[0].strip()  # keep the part before a colon/dash
+            if len(name) < 2:
+                continue
+            key = name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            subjects.append({'name': name[:120]})
+        return Response({'subjects': subjects[:30]}, status=status.HTTP_200_OK)
