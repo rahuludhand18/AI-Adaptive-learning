@@ -40,7 +40,7 @@ export default function AdultPlannerPage() {
   }, []);
 
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(() => (new Date().getDay() + 6) % 7); // default to today
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Modal Form state
@@ -49,15 +49,18 @@ export default function AdultPlannerPage() {
   const [blockTime, setBlockTime] = useState('03:00 PM - 04:30 PM');
   const [blockType, setBlockType] = useState<TimeBlock['type']>('default');
 
-  const days = [
-    { day: 'MON', date: '12', index: 0 },
-    { day: 'TUE', date: '13', index: 1 },
-    { day: 'WED', date: '14', index: 2 },
-    { day: 'THU', date: '15', index: 3 },
-    { day: 'FRI', date: '16', index: 4 },
-    { day: 'SAT', date: '17', index: 5 },
-    { day: 'SUN', date: '18', index: 6 },
-  ];
+  // real current week: Monday..Sunday with today's actual dates
+  const days = (() => {
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // back up to Monday
+    const abbr = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    return abbr.map((d, i) => {
+      const dt = new Date(monday);
+      dt.setDate(monday.getDate() + i);
+      return { day: d, date: String(dt.getDate()), index: i };
+    });
+  })();
 
   const handleCreateBlock = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -4,6 +4,25 @@ from rest_framework.permissions import IsAuthenticated
 
 from kids.models import Quest, QuestCompletion, DailyPuzzle, PuzzleAttempt
 from rewards.models import StarReward
+from parents.models import Restriction
+
+
+class MySettingsView(views.APIView):
+    # Lets the signed-in child read its own restriction so Kid's Mode can enforce
+    # the daily screen-time limit and eye-break interval.
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        u = request.user
+        r, _ = Restriction.objects.get_or_create(child=u)
+        return Response({
+            'daily_screen_time_limit': r.daily_screen_time_limit,   # minutes
+            'eye_break_interval': r.eye_break_interval,              # minutes
+            'session_limit': r.session_limit,
+            'whitelisted_websites': r.whitelisted_websites,
+            'is_locked': u.is_locked,
+            'temporary_session_until': u.temporary_session_until,
+        })
 
 
 # Add stars to a child's wallet and return the new balance.

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogOut, CheckCircle2, Pause, Play, Brain, User, Smile, Users } from 'lucide-react';
@@ -22,6 +22,16 @@ export default function AdultFocusSessionPage() {
     tickSession,
   } = useFocusStore();
 
+  // adjustable session length (minutes)
+  const [durationMin, setDurationMin] = useState(25);
+
+  // change the timer length; restarts the countdown with the new total
+  const setDuration = (mins: number) => {
+    const m = Math.max(1, Math.min(180, Math.round(mins || 0)));
+    setDurationMin(m);
+    startSession(blockId, m);
+  };
+
   // start a real focus session on the backend so tab switches are counted against it
   useEffect(() => {
     apiRequest('/api/focus/session/start', { method: 'POST' }).catch(() => {});
@@ -29,7 +39,7 @@ export default function AdultFocusSessionPage() {
 
   useEffect(() => {
     if (!activeSession.blockId) {
-      startSession(blockId, 25);
+      startSession(blockId, durationMin);
     }
 
     const interval = setInterval(() => {
@@ -110,6 +120,35 @@ export default function AdultFocusSessionPage() {
           {/* Digits Display */}
           <div className="text-7xl sm:text-8xl font-black text-indigo tracking-tight font-mono">
             {formattedTime}
+          </div>
+
+          {/* Adjustable session length */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {[15, 25, 45, 60].map((m) => (
+              <button
+                key={m}
+                onClick={() => setDuration(m)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                  durationMin === m
+                    ? 'bg-indigo text-white border-indigo shadow-sm'
+                    : 'bg-white dark:bg-slate-800 border-border dark:border-slate-700 text-textSecondary dark:text-slate-300 hover:border-indigo/40'
+                }`}
+              >
+                {m}m
+              </button>
+            ))}
+            <div className="flex items-center gap-1.5 pl-1">
+              <input
+                type="number"
+                min={1}
+                max={180}
+                value={durationMin}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                className="w-16 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-center font-bold text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo"
+                aria-label="Custom minutes"
+              />
+              <span className="text-[11px] font-bold text-textSecondary dark:text-slate-400">min</span>
+            </div>
           </div>
 
           {/* Progress Bar & Label Pair */}

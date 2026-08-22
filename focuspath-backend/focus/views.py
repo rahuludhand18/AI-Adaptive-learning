@@ -82,6 +82,7 @@ class TabSwitchView(views.APIView):
 
                 response_data["logout_required"] = True
                 response_data["locked"] = True
+                response_data["code"] = "account_locked"  # frontend tab-tracker checks this
                 response_data["detail"] = "Account locked due to 3 tab switches. Parent approval needed."
                 return Response(response_data, status=status.HTTP_403_FORBIDDEN)
 
