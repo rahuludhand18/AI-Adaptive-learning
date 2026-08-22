@@ -10,7 +10,8 @@ import {
   BookOpen,
   Trophy,
   LogOut,
-  GraduationCap
+  GraduationCap,
+  Puzzle
 } from 'lucide-react';
 
 interface KidLayoutProps {
@@ -27,6 +28,7 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
   const topNavItems = [
     { name: 'Home', href: '/kid/dashboard', icon: Home },
     { name: 'Learn', href: '/kid/learn', icon: GraduationCap },
+    { name: 'Quests', href: '/kid/quests', icon: Puzzle },
     { name: 'Story', href: '/kid/stories', icon: BookOpen },
     { name: 'Rewards', href: '/kid/rewards', icon: Trophy },
   ];

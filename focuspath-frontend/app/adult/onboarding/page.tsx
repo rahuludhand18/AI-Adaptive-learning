@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { apiRequest } from '@/lib/api';
+import { generateSchedule } from '@/lib/plannerApi';
 import { useRouter } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -32,6 +33,12 @@ export default function AdultOnboardingPage() {
   const [isParsingSyllabus, setIsParsingSyllabus] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  // default target: 30 days from today (YYYY-MM-DD)
+  const [finishBy, setFinishBy] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
 
   const handleAddSubject = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,12 +90,25 @@ export default function AdultOnboardingPage() {
     }
   };
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
+  const handleGenerate = async () => {
+    if (!subjects.length) {
       router.push('/adult/dashboard');
-    }, 800);
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      // build a real timetable from subjects (priority = difficulty) + finish date + hours/day
+      await generateSchedule(
+        subjects.map((s) => ({ name: s.name, difficulty: s.priority })),
+        dailyHours,
+        finishBy,
+      );
+      router.push('/adult/planner'); // show the generated schedule
+    } catch {
+      router.push('/adult/dashboard'); // still proceed if generation failed
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getSubjectIcon = (iconName: string) => {
@@ -332,6 +352,19 @@ export default function AdultOnboardingPage() {
               <span>1 Hour</span>
               <span>12 Hours</span>
             </div>
+          </div>
+
+          {/* Target finish date */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-textPrimary dark:text-slate-200 uppercase block">
+              Finish syllabus by
+            </label>
+            <input
+              type="date"
+              value={finishBy}
+              onChange={(e) => setFinishBy(e.target.value)}
+              className="w-full sm:w-auto px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+            />
           </div>
 
           {/* Action Button */}

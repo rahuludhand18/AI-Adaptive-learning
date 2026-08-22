@@ -9,6 +9,7 @@ export function useTabTracker() {
 
   useEffect(() => {
     if (!user) return;
+    if (user.role !== 'KID') return; // tab-switch lockout applies to children only
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'hidden') {

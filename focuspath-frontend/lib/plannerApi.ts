@@ -94,6 +94,26 @@ export async function createTask(payload: ReturnType<typeof timeBlockToTaskPaylo
   return apiRequest<Task>('/api/planner/tasks/', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+// Generate a whole timetable from subjects + a finish-by date + hours/day.
+export async function generateSchedule(
+  subjects: { name: string; difficulty: number }[],
+  dailyHours: number,
+  finishBy: string, // 'YYYY-MM-DD'
+): Promise<Task[]> {
+  return apiRequest<Task[]>('/api/planner/generate/', {
+    method: 'POST',
+    body: JSON.stringify({ subjects, daily_hours: dailyHours, finish_by: finishBy }),
+  });
+}
+
+// Patch a task: mark done/pending (status) or reschedule (start_time/end_time).
+export async function updateTask(
+  id: number,
+  patch: Partial<Pick<Task, 'status' | 'start_time' | 'end_time'>>,
+): Promise<Task> {
+  return apiRequest<Task>(`/api/planner/tasks/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
 export interface RebuiltTask {
   task_id: number;
   title: string;

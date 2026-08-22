@@ -1,10 +1,12 @@
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from planner.models import Task
 from planner.serializers import TaskSerializer
+from planner.scheduling import generate_schedule
 from users.models import User
 
 class TaskListCreateView(generics.ListCreateAPIView):
@@ -160,3 +162,35 @@ class SyllabusParseView(views.APIView):
             seen.add(key)
             subjects.append({'name': name[:120]})
         return Response({'subjects': subjects[:30]}, status=status.HTTP_200_OK)
+
+
+class GenerateScheduleView(views.APIView):
+    # Build a fresh timetable from subjects + finish-by date + hours/day.
+    # Archives any existing active plan first, then creates the new Task blocks.
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if user.role == User.Roles.KID:
+            raise PermissionDenied("Kids do not create timetables.")
+
+        subjects = request.data.get('subjects', [])
+        try:
+            daily_hours = int(request.data.get('daily_hours', 4) or 4)
+        except (TypeError, ValueError):
+            daily_hours = 4
+        finish_by = parse_date(str(request.data.get('finish_by', '')))
+
+        if not subjects or not finish_by:
+            return Response({"detail": "subjects and finish_by (YYYY-MM-DD) are required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.localtime(timezone.now())
+        # replace any existing active/updated plan so regeneration is clean
+        Task.objects.filter(
+            user=user, status__in=[Task.Statuses.ACTIVE, Task.Statuses.UPDATED]
+        ).update(status=Task.Statuses.ARCHIVED)
+
+        planned = generate_schedule(subjects, daily_hours, finish_by, now)
+        created = [Task.objects.create(user=user, status=Task.Statuses.ACTIVE, **t) for t in planned]
+        return Response(TaskSerializer(created, many=True).data, status=status.HTTP_201_CREATED)
