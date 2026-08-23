@@ -12,7 +12,9 @@ import { StatCard } from '@/components/ui/StatCard';
 import { useFocusStore } from '@/store/useFocusStore';
 import { useAuthStore } from '@/store/authStore';
 import { COPY } from '@/constants/copy';
-import { focusApi, WEEKLY_TREND } from '@/services/focusApi';
+import { focusApi, WEEKLY_TREND, TimeBlock } from '@/services/focusApi';
+import { apiRequest } from '@/lib/api';
+import { listTasks, taskToTimeBlock } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Clock,
@@ -41,6 +43,26 @@ export default function AdultDashboardPage() {
     reflectionText,
     setReflectionText,
   } = useFocusStore();
+
+  // real data for the dashboard: today's blocks + weekly focus trend
+  const [todayBlocks, setTodayBlocks] = useState<TimeBlock[]>([]);
+  const [trend, setTrend] = useState(WEEKLY_TREND);
+
+  useEffect(() => {
+    const todayIdx = (new Date().getDay() + 6) % 7; // Mon=0..Sun=6
+    listTasks()
+      .then((ts) =>
+        setTodayBlocks(
+          ts.filter((t) => t.status !== 'ARCHIVED').map(taskToTimeBlock).filter((b) => b.dayIndex === todayIdx),
+        ),
+      )
+      .catch(() => {});
+    apiRequest<{ weekly_focus: { day: string; score: number }[] }>('/api/analytics/adult/')
+      .then((a) => {
+        if (a.weekly_focus?.length) setTrend(a.weekly_focus);
+      })
+      .catch(() => {});
+  }, []);
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizedMsg, setOptimizedMsg] = useState<string | null>(null);
@@ -86,8 +108,8 @@ export default function AdultDashboardPage() {
     }
   };
 
-  const completedBlocks = timetable.filter((b) => b.status === 'completed').length;
-  const totalBlocks = timetable.length;
+  const completedBlocks = todayBlocks.filter((b) => b.status === 'completed').length;
+  const totalBlocks = todayBlocks.length;
   const completedTasksCount = dailyTasks.filter((t) => t.completed).length;
   const totalTasksCount = dailyTasks.length;
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
@@ -197,7 +219,12 @@ export default function AdultDashboardPage() {
 
                   {/* List of 3 blocks */}
                   <div className="space-y-2.5">
-                    {timetable.slice(0, 3).map((block) => (
+                    {todayBlocks.length === 0 && (
+                      <p className="text-xs text-textSecondary dark:text-slate-400 py-3 text-center">
+                        No blocks scheduled for today.
+                      </p>
+                    )}
+                    {todayBlocks.slice(0, 3).map((block) => (
                       <div
                         key={block.id}
                         onClick={() => {
@@ -237,7 +264,7 @@ export default function AdultDashboardPage() {
                   <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-indigo h-full rounded-full transition-all duration-500"
-                      style={{ width: `${(completedBlocks / totalBlocks) * 100}%` }}
+                      style={{ width: `${totalBlocks ? (completedBlocks / totalBlocks) * 100 : 0}%` }}
                     />
                   </div>
                   <p className="text-[11px] text-textSecondary dark:text-slate-400 text-right font-medium">
@@ -271,7 +298,7 @@ export default function AdultDashboardPage() {
                 {/* Recharts Area Chart */}
                 <div className="h-64 w-full pt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={WEEKLY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={trend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="indigoGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
