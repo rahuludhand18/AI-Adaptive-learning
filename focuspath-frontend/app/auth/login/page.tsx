@@ -22,8 +22,9 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
 
-  // Mode state: null = show selection cards, 'adult' = adult form, 'kid' = kid form
-  const [loginMode, setLoginMode] = useState<'adult' | 'kid' | null>(null);
+  // Go straight to the credentials form; the real role comes from the account after login.
+  // (URL params below may still switch the header to 'kid' for locked accounts.)
+  const [loginMode, setLoginMode] = useState<'adult' | 'kid' | null>('adult');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -201,7 +202,7 @@ function LoginContent() {
         <button
           onClick={() => {
             setError(null);
-            setLoginMode(null);
+            router.push('/');
           }}
           className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
         >
@@ -245,15 +246,17 @@ function LoginContent() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-              Username
+              Username or Email
             </label>
             <div className="relative">
               <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
+                name="username"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
+                placeholder="Enter username or email"
                 className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${
                   loginMode === 'kid'
                     ? 'border-slate-200 dark:border-slate-700 focus:border-emerald-500/60 focus:ring-emerald-500/20'
@@ -272,6 +275,8 @@ function LoginContent() {
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="password"
+                name="current-password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

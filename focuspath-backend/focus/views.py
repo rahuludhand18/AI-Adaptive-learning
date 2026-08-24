@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from focus.models import FocusSession
+from focus.models import FocusSession, TabActivityEvent
 from focus.serializers import FocusSessionSerializer
 from users.models import User, ParentChildRelation
 
@@ -88,3 +88,16 @@ class TabSwitchView(views.APIView):
 
         # For Adult mode, we just return the count. No lockouts.
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class TabActivityLogView(views.APIView):
+    # Lightweight left/return event log, separate from the lockout counter above — this is
+    # purely so a parent can see exactly when their child left the app and for how long.
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        event_type = str(request.data.get('event_type', '')).upper()
+        if event_type not in (TabActivityEvent.EventType.LEFT, TabActivityEvent.EventType.RETURN):
+            return Response({"detail": "event_type must be LEFT or RETURN."}, status=status.HTTP_400_BAD_REQUEST)
+        TabActivityEvent.objects.create(user=request.user, event_type=event_type)
+        return Response({"detail": "Logged."}, status=status.HTTP_201_CREATED)

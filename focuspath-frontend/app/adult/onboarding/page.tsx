@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { apiRequest } from '@/lib/api';
-import { generateSchedule } from '@/lib/plannerApi';
+import { generateSchedule, parseSyllabusFile, clearSchedule } from '@/lib/plannerApi';
 import { useRouter } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -25,7 +24,18 @@ import {
 
 export default function AdultOnboardingPage() {
   const router = useRouter();
-  const { subjects, addSubject, removeSubject, dailyHours, setDailyHours } = useFocusStore();
+  const { subjects, addSubject, removeSubject, updateSubjectPriority, clearSubjects, dailyHours, setDailyHours } = useFocusStore();
+
+  // delete the whole syllabus: clear planned subjects AND archive the generated timetable
+  const handleDeleteSyllabus = async () => {
+    clearSubjects();
+    setUploadedFileName(null);
+    try {
+      await clearSchedule();
+    } catch {
+      // ignore; subjects are cleared locally regardless
+    }
+  };
 
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newPriority, setNewPriority] = useState<number>(4);
@@ -40,40 +50,39 @@ export default function AdultOnboardingPage() {
     return d.toISOString().slice(0, 10);
   });
 
+  // readable form of the shared "finish syllabus by" target (e.g. "Sep 22, 2026")
+  const finishByLabel = (() => {
+    const [y, m, d] = finishBy.split('-').map(Number);
+    if (!y || !m || !d) return '—';
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  })();
+
   const handleAddSubject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubjectName.trim()) return;
     addSubject({
       name: newSubjectName.trim(),
       priority: newPriority,
-      deadline: '12/25/2023',
+      deadline: '',
       icon: 'BookOpen',
     });
     setNewSubjectName('');
   };
 
-  const processSyllabusFile = (file: File) => {
+  const processSyllabusFile = async (file: File) => {
     setUploadedFileName(file.name);
     setIsParsingSyllabus(true);
-
-    // read the file text and parse subjects on the backend (text-based, not image OCR)
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const text = String(reader.result || '');
-      try {
-        const res = await apiRequest<{ subjects: { name: string }[] }>('/api/planner/syllabus-parse/', {
-          method: 'POST',
-          body: JSON.stringify({ text }),
-        });
-        res.subjects.forEach((s) => addSubject({ name: s.name, priority: 3, deadline: '', icon: 'BookOpen' }));
-      } catch {
-        // ignore parse errors; the user can still add subjects manually
-      } finally {
-        setIsParsingSyllabus(false);
-      }
-    };
-    reader.onerror = () => setIsParsingSyllabus(false);
-    reader.readAsText(file);
+    try {
+      // server extracts subjects from .txt or .pdf
+      const subjects = await parseSyllabusFile(file);
+      // priority starts unrated (0) — the user sets difficulty by clicking the stars.
+      // topics extracted from the syllabus are kept so each block can cover specific content.
+      subjects.forEach((s) => addSubject({ name: s.name, priority: 0, deadline: '', icon: 'BookOpen', topics: s.topics || [] }));
+    } catch {
+      // ignore; user can still add subjects manually
+    } finally {
+      setIsParsingSyllabus(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +108,8 @@ export default function AdultOnboardingPage() {
     try {
       // build a real timetable from subjects (priority = difficulty) + finish date + hours/day
       await generateSchedule(
-        subjects.map((s) => ({ name: s.name, difficulty: s.priority })),
+        // unrated subjects (priority 0) default to medium difficulty (3) for balanced scheduling
+        subjects.map((s) => ({ name: s.name, difficulty: s.priority || 3, topics: s.topics || [] })),
         dailyHours,
         finishBy,
       );
@@ -169,15 +179,14 @@ export default function AdultOnboardingPage() {
               {/* Format badges */}
               <div className="flex items-center space-x-2 my-3">
                 <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.pdf</span>
-                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.jpg</span>
-                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.png</span>
+                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.txt</span>
               </div>
 
               {/* Upload Input & Button */}
               <label className="cursor-pointer py-2.5 px-6 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-md active:scale-95 inline-flex items-center space-x-2">
                 <input
                   type="file"
-                  accept=".pdf,.jpg,.png"
+                  accept=".txt,.pdf"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -252,9 +261,21 @@ export default function AdultOnboardingPage() {
                   <h2 className="text-base font-bold text-textPrimary dark:text-slate-100">
                     {COPY.onboarding.plannedTitle}
                   </h2>
-                  <span className="text-xs font-extrabold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/40">
-                    {subjects.length} Added
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/40">
+                      {subjects.length} Added
+                    </span>
+                    {subjects.length > 0 && (
+                      <button
+                        onClick={handleDeleteSyllabus}
+                        title="Delete syllabus and clear the generated timetable"
+                        className="flex items-center gap-1 text-xs font-bold text-danger dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-900/40 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Syllabus
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Subjects List Rows */}
@@ -270,18 +291,28 @@ export default function AdultOnboardingPage() {
                         </div>
                         <div>
                           <h4 className="text-sm font-bold text-textPrimary dark:text-slate-100">{sub.name}</h4>
-                          {/* Priority Stars Display */}
+                          {/* Clickable difficulty stars — the student sets this, it is not guessed */}
                           <div className="flex items-center space-x-1 mt-0.5">
                             {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
+                              <button
                                 key={star}
-                                className={`w-3 h-3 ${
-                                  star <= sub.priority
-                                    ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-200 dark:text-slate-700'
-                                }`}
-                              />
+                                type="button"
+                                onClick={() => updateSubjectPriority(sub.id, star)}
+                                title={`Set difficulty to ${star}`}
+                                className="cursor-pointer hover:scale-110 transition-transform"
+                              >
+                                <Star
+                                  className={`w-3.5 h-3.5 ${
+                                    star <= sub.priority
+                                      ? 'text-amber-400 fill-amber-400'
+                                      : 'text-slate-200 dark:text-slate-700'
+                                  }`}
+                                />
+                              </button>
                             ))}
+                            {sub.priority === 0 && (
+                              <span className="text-[10px] text-textSecondary dark:text-slate-500 ml-1">Rate difficulty</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -289,8 +320,8 @@ export default function AdultOnboardingPage() {
                       {/* Deadline Date & Delete */}
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-1.5 text-xs text-textSecondary dark:text-slate-400 bg-white dark:bg-slate-800 py-1.5 px-2.5 rounded-lg border border-border dark:border-slate-700">
-                          <span className="text-[10px] font-bold uppercase text-textSecondary dark:text-slate-400">DEADLINE</span>
-                          <span className="font-semibold text-textPrimary dark:text-slate-200">{sub.deadline}</span>
+                          <span className="text-[10px] font-bold uppercase text-textSecondary dark:text-slate-400">FINISH BY</span>
+                          <span className="font-semibold text-textPrimary dark:text-slate-200">{finishByLabel}</span>
                           <Calendar className="w-3.5 h-3.5 text-textSecondary ml-1" />
                         </div>
                         <button

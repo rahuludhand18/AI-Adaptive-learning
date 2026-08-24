@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/layout/ParentLayout';
 import AddWebsiteModal from '@/components/parent/AddWebsiteModal';
+import AddVideoModal from '@/components/parent/AddVideoModal';
 import MorsePatternModal from '@/components/parent/MorsePatternModal';
 import { apiRequest } from '@/lib/api';
+import { listMyVideos, deleteMyVideo, MyVideo } from '@/lib/parentApi';
 import {
   BookOpen,
   Compass,
@@ -13,7 +15,9 @@ import {
   Clock,
   Eye,
   Smartphone,
-  Video
+  Video,
+  Youtube,
+  Trash2,
 } from 'lucide-react';
 
 interface WebsiteItem {
@@ -74,8 +78,23 @@ export default function ManageRestrictionsPage() {
   const [morsePattern, setMorsePattern] = useState('••—•');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddVideoModalOpen, setIsAddVideoModalOpen] = useState(false);
   const [isMorseModalOpen, setIsMorseModalOpen] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // videos this parent has added — the real content that appears in the child's Learn page
+  const [myVideos, setMyVideos] = useState<MyVideo[]>([]);
+  const loadMyVideos = () => listMyVideos().then(setMyVideos).catch(() => {});
+  useEffect(() => { loadMyVideos(); }, []);
+
+  const handleDeleteVideo = async (id: number) => {
+    try {
+      await deleteMyVideo(id);
+      setMyVideos((prev) => prev.filter((v) => v.id !== id));
+    } catch {
+      // ignore; list stays as-is if delete fails
+    }
+  };
 
   // real restriction wiring: target the parent's first child
   const [childId, setChildId] = useState<number | null>(null);
@@ -149,8 +168,8 @@ export default function ManageRestrictionsPage() {
       });
       setSaveSuccess('Safety boundaries and restrictions updated successfully!');
       setTimeout(() => setSaveSuccess(null), 3000);
-    } catch {
-      setLoadError('Could not save changes. Please try again.');
+    } catch (err: any) {
+      setLoadError(err.message || 'Could not save changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -361,6 +380,60 @@ export default function ManageRestrictionsPage() {
 
         </div>
 
+        {/* Approved Learning Videos — the real content that shows up in the child's Learn page */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-8 shadow-2xs space-y-6 mb-24">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Approved learning videos</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                Only videos you add here ever appear in your child&apos;s Learn page.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsAddVideoModalOpen(true)}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+            >
+              <Youtube className="h-4 w-4" />
+              <span>Add Video</span>
+            </button>
+          </div>
+
+          {myVideos.length > 0 ? (
+            <div className="space-y-3">
+              {myVideos.map((v) => (
+                <div
+                  key={v.id}
+                  className="bg-slate-50/60 dark:bg-slate-800/60 border border-slate-100/80 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                      <Youtube className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{v.title}</h4>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold truncate">
+                        {v.level_name} · {v.subject_name} · {v.topic_title}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteVideo(v.id)}
+                    title="Remove this video"
+                    className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 space-y-1">
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500">No videos added yet</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Click &quot;Add Video&quot; to paste a YouTube link for your child.</p>
+            </div>
+          )}
+        </div>
+
         {/* Bottom Action Footer Bar */}
         <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-8 py-4 flex items-center justify-between z-20 shadow-md">
           <button
@@ -384,6 +457,13 @@ export default function ManageRestrictionsPage() {
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           onAdd={handleAddWebsite}
+        />
+
+        {/* Add Video Modal */}
+        <AddVideoModal
+          isOpen={isAddVideoModalOpen}
+          onClose={() => setIsAddVideoModalOpen(false)}
+          onAdded={loadMyVideos}
         />
 
         {/* Morse Pattern Modal */}

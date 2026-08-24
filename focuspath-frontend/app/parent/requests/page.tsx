@@ -75,8 +75,8 @@ export default function AccessRequestsPage() {
       });
       setActionSuccess(msg);
       setRequests((prev) => prev.filter((r) => r.id !== id));
-    } catch {
-      setError('Could not resolve the request. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Could not resolve the request. Please try again.');
     } finally {
       setResolvingId(null);
     }

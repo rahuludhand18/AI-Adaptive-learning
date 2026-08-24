@@ -29,8 +29,9 @@ export default function KidDashboardPage() {
   const router = useRouter();
 
   // Gamification & Interactive State
-  const [stars, setStars] = useState(250);
-  const [dailyGoalPercent, setDailyGoalPercent] = useState(80);
+  const [stars, setStars] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [dailyGoalPercent, setDailyGoalPercent] = useState(0);
   const [claimedDailyPrize, setClaimedDailyPrize] = useState(false);
   const [puzzleAnswered, setPuzzleAnswered] = useState<number | null>(null);
 
@@ -101,10 +102,13 @@ export default function KidDashboardPage() {
     },
   ];
 
-  // load the child's real star balance on mount
+  // load the child's real star balance + streak on mount
   useEffect(() => {
-    apiRequest<{ balance: number }>('/api/rewards/wallet/')
-      .then((w) => setStars(w.balance))
+    apiRequest<{ balance: number; streak_count: number }>('/api/rewards/wallet/')
+      .then((w) => {
+        setStars(w.balance ?? 0);
+        setStreak(w.streak_count ?? 0);
+      })
       .catch(() => {});
   }, []);
 
@@ -234,7 +238,7 @@ export default function KidDashboardPage() {
               </div>
 
               <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
-                Only 6 minutes remaining to complete today's streak target!
+                {dailyGoalPercent >= 100 ? "Today's goal complete — great job! 🎉" : "Keep going to complete today's goal!"}
               </p>
             </div>
 
@@ -251,14 +255,14 @@ export default function KidDashboardPage() {
 
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">5 Day Streak</span>
-                  <span className="text-xs font-bold text-orange-600 dark:text-orange-400">Active 🔥</span>
+                  <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{streak} Day Streak</span>
+                  {streak > 0 && <span className="text-xs font-bold text-orange-600 dark:text-orange-400">Active 🔥</span>}
                 </div>
 
                 {/* Day Dots Indicator */}
                 <div className="flex items-center justify-between pt-1">
                   {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
-                    const isDone = idx < 5;
+                    const isDone = idx < streak;
                     return (
                       <div
                         key={idx}

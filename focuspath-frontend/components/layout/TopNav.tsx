@@ -4,15 +4,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, Settings, UploadCloud, LogOut, User as UserIcon } from 'lucide-react';
-import { useFocusStore } from '@/store/useFocusStore';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export const TopNav: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useFocusStore();
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : 'U';
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -118,11 +117,9 @@ export const TopNav: React.FC = () => {
               className="w-9 h-9 rounded-full ring-2 ring-indigo-500/20 dark:ring-indigo-400/30 overflow-hidden cursor-pointer hover:ring-indigo-500 transition-all focus:outline-none flex items-center justify-center"
               title="User profile"
             >
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-full h-full object-cover"
-              />
+              <span className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-xs font-bold">
+                {initials}
+              </span>
             </button>
 
             {/* Roll-out Dropdown Menu */}
@@ -130,11 +127,11 @@ export const TopNav: React.FC = () => {
               <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-2.5 space-y-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 {/* User Header Info */}
                 <div className="flex items-center space-x-3 p-2 bg-indigo-50/50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
-                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-indigo-200 dark:border-indigo-800">
-                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center bg-indigo-600 text-white text-xs font-bold">
+                    {initials}
                   </div>
                   <div className="overflow-hidden">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{user.name}</h4>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{user?.username || 'User'}</h4>
                     <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900 inline-block mt-0.5">
                       Adult Mode
                     </span>

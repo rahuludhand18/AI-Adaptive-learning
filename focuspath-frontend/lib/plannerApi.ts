@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/api';
+import { apiRequest, getCookie } from '@/lib/api';
 import { TimeBlock } from '@/services/focusApi';
 
 // Backend Task shape (planner app)
@@ -54,6 +54,8 @@ export function taskToTimeBlock(task: Task): TimeBlock {
   const isActive = task.status !== 'COMPLETED' && start <= now && new Date(task.end_time) >= now;
   const status: TimeBlock['status'] =
     task.status === 'COMPLETED' ? 'completed' : isActive ? 'active' : 'upcoming';
+  // local YYYY-MM-DD for the block's calendar date (not UTC, so it matches the displayed day)
+  const dateKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
   return {
     id: String(task.id),
     timeRange: `${hhmm(task.start_time)} - ${hhmm(task.end_time)}`,
@@ -62,6 +64,7 @@ export function taskToTimeBlock(task: Task): TimeBlock {
     status,
     type: status === 'completed' ? 'completed' : status === 'active' ? 'active' : 'default',
     dayIndex: (start.getDay() + 6) % 7, // Mon=0 .. Sun=6
+    dateKey,
   };
 }
 
@@ -94,9 +97,28 @@ export async function createTask(payload: ReturnType<typeof timeBlockToTaskPaylo
   return apiRequest<Task>('/api/planner/tasks/', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+// Upload a .txt or .pdf syllabus; the server extracts subject names + their topics.
+export async function parseSyllabusFile(file: File): Promise<{ name: string; topics?: string[] }[]> {
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const token = typeof window !== 'undefined' ? getCookie('accessToken') || localStorage.getItem('accessToken') : null;
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${base}/api/planner/syllabus-upload/`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form, // let the browser set the multipart boundary
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Could not read the file.');
+  }
+  const data = await res.json();
+  return data.subjects || [];
+}
+
 // Generate a whole timetable from subjects + a finish-by date + hours/day.
 export async function generateSchedule(
-  subjects: { name: string; difficulty: number }[],
+  subjects: { name: string; difficulty: number; topics?: string[] }[],
   dailyHours: number,
   finishBy: string, // 'YYYY-MM-DD'
 ): Promise<Task[]> {
@@ -106,12 +128,36 @@ export async function generateSchedule(
   });
 }
 
-// Patch a task: mark done/pending (status) or reschedule (start_time/end_time).
+// Patch a task: mark done/pending (status), reschedule (start_time/end_time), or edit (title/description/priority).
 export async function updateTask(
   id: number,
-  patch: Partial<Pick<Task, 'status' | 'start_time' | 'end_time'>>,
+  patch: Partial<Pick<Task, 'status' | 'start_time' | 'end_time' | 'title' | 'description' | 'priority'>>,
 ): Promise<Task> {
   return apiRequest<Task>(`/api/planner/tasks/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+// Soft-delete (archive) a task so it drops off the timetable.
+export async function deleteTask(id: number): Promise<void> {
+  await apiRequest(`/api/planner/tasks/${id}/`, { method: 'DELETE' });
+}
+
+// Delete the whole syllabus plan: archives every active task so the timetable is emptied.
+export async function clearSchedule(): Promise<{ detail: string; cleared: number }> {
+  return apiRequest('/api/planner/clear/', { method: 'POST' });
+}
+
+// Ask the data-driven assistant. tab 'planner' answers from the schedule; 'syllabus' from subjects/topics.
+export async function askPlannerAssistant(message: string, tab: 'planner' | 'syllabus' = 'planner'): Promise<string> {
+  const res = await apiRequest<{ reply: string }>('/api/planner/assistant/', {
+    method: 'POST',
+    body: JSON.stringify({ message, tab }),
+  });
+  return res.reply;
+}
+
+// Spread overdue (incomplete, past) blocks into upcoming free slots, respecting deadlines.
+export async function carryOverOverdue(): Promise<{ detail: string; moved: number }> {
+  return apiRequest('/api/planner/carryover/', { method: 'POST' });
 }
 
 export interface RebuiltTask {

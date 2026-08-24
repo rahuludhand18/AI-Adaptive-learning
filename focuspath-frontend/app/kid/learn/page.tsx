@@ -172,24 +172,10 @@ const FALLBACK_VIDEOS: Record<number, Video[]> = {
       ],
     },
   ],
-  3022: [
-    {
-      id: 4,
-      topic: 3022,
-      youtube_id: 'd7K0Y_x0vCg',
-      title: 'Ocean Animals for Kids | Marine Life Exploration',
-      duration_seconds: 280,
-      source_channel: 'SciShow Kids',
-      age_min: 5,
-      age_max: 13,
-      takeaways: [
-        'Over 70% of Earth is covered by oceans.',
-        'Blue whales are the largest creatures ever known to live on Earth.',
-        'Coral reefs support over 25% of all marine species.',
-      ],
-    },
-  ],
 };
+// Note: the topic 3022 ("Deep Ocean Mysteries") demo video ID was found to be dead (404 on
+// YouTube's oEmbed check) and was removed rather than replaced with another unverified guess —
+// it now falls through to the verified default video below.
 
 // Subject Icon Helper
 function getSubjectIcon(name: string) {
@@ -230,13 +216,24 @@ export default function KidLearnPage() {
   // App & Gamification State
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [stars, setStars] = useState(250);
+  const [stars, setStars] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [completedVideos, setCompletedVideos] = useState<number[]>([]);
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizAnswered, setQuizAnswered] = useState<number | null>(null);
-  const [todayCompletedCount, setTodayCompletedCount] = useState(1);
+  const [todayCompletedCount, setTodayCompletedCount] = useState(0);
 
   // Load levels on mount
+  // real star balance + streak for the child
+  useEffect(() => {
+    apiRequest<{ balance: number; streak_count: number }>('/api/rewards/wallet/')
+      .then((w) => {
+        setStars(w.balance ?? 0);
+        setStreak(w.streak_count ?? 0);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     apiRequest<Level[]>('/api/content/levels/')
@@ -890,14 +887,16 @@ export default function KidLearnPage() {
                     <div>
                       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Study Streak</h3>
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                        5 Days in a Row
+                        {streak} {streak === 1 ? 'Day' : 'Days'} in a Row
                       </p>
                     </div>
                   </div>
 
-                  <span className="bg-primary/5 text-primary border border-primary/20 text-xs font-bold py-1 px-3 rounded-full">
-                    Level 3
-                  </span>
+                  {selectedLevel && (
+                    <span className="bg-primary/5 text-primary border border-primary/20 text-xs font-bold py-1 px-3 rounded-full">
+                      {selectedLevel.name}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-2 pt-1">
