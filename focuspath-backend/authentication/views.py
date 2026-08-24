@@ -9,6 +9,14 @@ from users.serializers import RegisterSerializer, UserSerializer
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        # Allow signing in with either username OR email: if an email was entered,
+        # resolve it to that account's username before the normal credential check.
+        login = attrs.get(self.username_field)
+        if login and '@' in login:
+            match = User.objects.filter(email__iexact=login).first()
+            if match:
+                attrs[self.username_field] = match.username
+
         # Base validation handles credentials checking
         data = super().validate(attrs)
         

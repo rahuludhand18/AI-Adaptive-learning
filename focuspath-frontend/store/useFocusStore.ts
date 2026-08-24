@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Subject, TimeBlock, DailyTask, INITIAL_SUBJECTS, INITIAL_TIMETABLE, INITIAL_TASKS } from '@/services/focusApi';
+import { Subject, TimeBlock, DailyTask } from '@/services/focusApi';
 
 interface FocusState {
   // Auth & User
@@ -15,6 +15,8 @@ interface FocusState {
   dailyHours: number;
   addSubject: (subject: Omit<Subject, 'id'>) => void;
   removeSubject: (id: string) => void;
+  updateSubjectPriority: (id: string, priority: number) => void;
+  clearSubjects: () => void;
   setDailyHours: (hours: number) => void;
 
   // Timetable
@@ -45,6 +47,9 @@ interface FocusState {
   tickSession: () => void;
 }
 
+// unique id even when called many times in the same millisecond (e.g. bulk syllabus import)
+const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
 export const useFocusStore = create<FocusState>((set, get) => ({
   user: {
     name: 'Alex',
@@ -56,19 +61,24 @@ export const useFocusStore = create<FocusState>((set, get) => ({
   setDashboardView: (view) => set({ dashboardView: view }),
   toggleDashboardView: () => set((state) => ({ dashboardView: state.dashboardView === 'morning' ? 'evening' : 'morning' })),
 
-  subjects: INITIAL_SUBJECTS,
+  subjects: [],
   dailyHours: 6,
   addSubject: (newSub) =>
     set((state) => ({
-      subjects: [...state.subjects, { ...newSub, id: `sub-${Date.now()}` }],
+      subjects: [...state.subjects, { ...newSub, id: uid('sub') }],
     })),
   removeSubject: (id) =>
     set((state) => ({
       subjects: state.subjects.filter((s) => s.id !== id),
     })),
+  updateSubjectPriority: (id, priority) =>
+    set((state) => ({
+      subjects: state.subjects.map((s) => (s.id === id ? { ...s, priority } : s)),
+    })),
+  clearSubjects: () => set({ subjects: [] }),
   setDailyHours: (hours) => set({ dailyHours: hours }),
 
-  timetable: INITIAL_TIMETABLE,
+  timetable: [],
   updateBlockStatus: (id, status, type) =>
     set((state) => ({
       timetable: state.timetable.map((b) =>
@@ -77,10 +87,10 @@ export const useFocusStore = create<FocusState>((set, get) => ({
     })),
   addTimeBlock: (newBlock) =>
     set((state) => ({
-      timetable: [...state.timetable, { ...newBlock, id: `block-${Date.now()}` }],
+      timetable: [...state.timetable, { ...newBlock, id: uid('block') }],
     })),
 
-  dailyTasks: INITIAL_TASKS,
+  dailyTasks: [],
   toggleTask: (id) =>
     set((state) => ({
       dailyTasks: state.dailyTasks.map((t) =>
@@ -91,7 +101,7 @@ export const useFocusStore = create<FocusState>((set, get) => ({
     set((state) => ({
       dailyTasks: [
         ...state.dailyTasks,
-        { id: `task-${Date.now()}`, title, subtitle, completed: false },
+        { id: uid('task'), title, subtitle, completed: false },
       ],
     })),
 

@@ -10,9 +10,10 @@ import { ProgressRing } from '@/components/ui/ProgressRing';
 import { GradientInsightCard } from '@/components/ui/GradientInsightCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { useFocusStore } from '@/store/useFocusStore';
-import { useAuthStore } from '@/store/authStore';
 import { COPY } from '@/constants/copy';
-import { focusApi, WEEKLY_TREND } from '@/services/focusApi';
+import { WEEKLY_TREND, TimeBlock } from '@/services/focusApi';
+import { apiRequest } from '@/lib/api';
+import { listTasks, taskToTimeBlock } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Clock,
@@ -29,7 +30,6 @@ import {
 
 export default function AdultDashboardPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const {
     timetable,
     startSession,
@@ -42,28 +42,50 @@ export default function AdultDashboardPage() {
     setReflectionText,
   } = useFocusStore();
 
-  const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizedMsg, setOptimizedMsg] = useState<string | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [isSavingReflection, setIsSavingReflection] = useState(false);
+  // real data for the dashboard: today's blocks + weekly focus trend
+  const [todayBlocks, setTodayBlocks] = useState<TimeBlock[]>([]);
+  const [trend, setTrend] = useState(WEEKLY_TREND);
+  const [analytics, setAnalytics] = useState<{ avg_focus_score: number; total_study_minutes: number; sessions: number; completion_rate: number } | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      useAuthStore.getState().setAuth(
-        { id: 1, username: 'Alex', email: 'alex@example.com', role: 'ADULT', is_locked: false, tab_switch_count: 0, temporary_session_until: null },
-        'token',
-        'refresh'
-      );
-    }
-  }, [user]);
+    const todayIdx = (new Date().getDay() + 6) % 7; // Mon=0..Sun=6
+    listTasks()
+      .then((ts) =>
+        setTodayBlocks(
+          ts.filter((t) => t.status !== 'ARCHIVED').map(taskToTimeBlock).filter((b) => b.dayIndex === todayIdx),
+        ),
+      )
+      .catch(() => {});
+    apiRequest<{ weekly_focus: { day: string; score: number }[]; avg_focus_score: number; total_study_minutes: number; sessions: number; completion_rate: number }>('/api/analytics/adult/')
+      .then((a) => {
+        if (a.weekly_focus?.length) setTrend(a.weekly_focus);
+        setAnalytics({ avg_focus_score: a.avg_focus_score, total_study_minutes: a.total_study_minutes, sessions: a.sessions, completion_rate: a.completion_rate });
+      })
+      .catch(() => {});
+  }, []);
 
-  const handleOptimize = async () => {
-    setIsOptimizing(true);
-    const res = await focusApi.applyOptimization('sug-1');
-    setIsOptimizing(false);
-    setOptimizedMsg(res.message);
-  };
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // A simple, real suggestion computed from today's blocks (no mock "AI").
+  const pendingToday = todayBlocks.filter((b) => b.status !== 'completed').length;
+  const nextBlock = todayBlocks.find((b) => b.status !== 'completed');
+  let suggestionBody: string;
+  let suggestionBtn: string;
+  let suggestionAction: () => void;
+  if (todayBlocks.length === 0) {
+    suggestionBody = 'No study blocks scheduled yet. Upload your syllabus to generate a personalised plan.';
+    suggestionBtn = 'Create Plan';
+    suggestionAction = () => router.push('/adult/onboarding');
+  } else if (pendingToday > 0) {
+    suggestionBody = `You have ${pendingToday} block${pendingToday > 1 ? 's' : ''} left today${nextBlock ? ` — next up: ${nextBlock.title}` : ''}.`;
+    suggestionBtn = 'Rebuild Plan';
+    suggestionAction = () => router.push('/adult/planner/rebuild');
+  } else {
+    suggestionBody = "All of today's blocks are done — great work! Review your progress or plan ahead.";
+    suggestionBtn = 'View Progress';
+    suggestionAction = () => router.push('/adult/progress');
+  }
 
   const handleAddNewTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,21 +95,12 @@ export default function AdultDashboardPage() {
     setShowAddForm(false);
   };
 
-  const handleSaveReflection = async () => {
-    setIsSavingReflection(true);
-    const completedIds = dailyTasks.filter((t) => t.completed).map((t) => t.id);
-    const res = await focusApi.saveReflection(reflectionText, completedIds);
-    setIsSavingReflection(false);
-
-    if (res.requiresRebuild) {
-      router.push('/adult/planner/rebuild');
-    } else {
-      router.push('/adult/planner');
-    }
+  const handleSaveReflection = () => {
+    router.push('/adult/progress');
   };
 
-  const completedBlocks = timetable.filter((b) => b.status === 'completed').length;
-  const totalBlocks = timetable.length;
+  const completedBlocks = todayBlocks.filter((b) => b.status === 'completed').length;
+  const totalBlocks = todayBlocks.length;
   const completedTasksCount = dailyTasks.filter((t) => t.completed).length;
   const totalTasksCount = dailyTasks.length;
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
@@ -124,12 +137,6 @@ export default function AdultDashboardPage() {
             </button>
           </div>
 
-          {dashboardView === 'evening' && (
-            <div className="inline-flex items-center space-x-2 bg-indigo-light text-indigo font-bold text-xs px-4 py-1.5 rounded-xl border border-indigo/20">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <span>{COPY.dashboardEvening.streakBadge}</span>
-            </div>
-          )}
         </div>
 
         {dashboardView === 'morning' ? (
@@ -155,7 +162,7 @@ export default function AdultDashboardPage() {
 
                 <div className="my-2">
                   <ProgressRing
-                    value={85}
+                    value={analytics?.avg_focus_score ?? 0}
                     label={COPY.dashboardMorning.focusScoreStatus}
                     color="#4F46E5"
                     size={150}
@@ -164,7 +171,7 @@ export default function AdultDashboardPage() {
                 </div>
 
                 <p className="text-xs text-textSecondary dark:text-slate-400 font-normal max-w-[200px]">
-                  {COPY.dashboardMorning.focusScoreNote}
+                  Average of your recent focus sessions.
                 </p>
               </div>
 
@@ -172,10 +179,10 @@ export default function AdultDashboardPage() {
               <div className="min-h-[280px] flex">
                 <GradientInsightCard
                   title={COPY.dashboardMorning.aiTitle}
-                  body={optimizedMsg || COPY.dashboardMorning.aiBody}
-                  btnText={COPY.dashboardMorning.aiBtn}
-                  onBtnClick={handleOptimize}
-                  isLoading={isOptimizing}
+                  body={suggestionBody}
+                  btnText={suggestionBtn}
+                  onBtnClick={suggestionAction}
+                  isLoading={false}
                   variant="indigo"
                 />
               </div>
@@ -197,7 +204,12 @@ export default function AdultDashboardPage() {
 
                   {/* List of 3 blocks */}
                   <div className="space-y-2.5">
-                    {timetable.slice(0, 3).map((block) => (
+                    {todayBlocks.length === 0 && (
+                      <p className="text-xs text-textSecondary dark:text-slate-400 py-3 text-center">
+                        No blocks scheduled for today.
+                      </p>
+                    )}
+                    {todayBlocks.slice(0, 3).map((block) => (
                       <div
                         key={block.id}
                         onClick={() => {
@@ -237,7 +249,7 @@ export default function AdultDashboardPage() {
                   <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-indigo h-full rounded-full transition-all duration-500"
-                      style={{ width: `${(completedBlocks / totalBlocks) * 100}%` }}
+                      style={{ width: `${totalBlocks ? (completedBlocks / totalBlocks) * 100 : 0}%` }}
                     />
                   </div>
                   <p className="text-[11px] text-textSecondary dark:text-slate-400 text-right font-medium">
@@ -271,7 +283,7 @@ export default function AdultDashboardPage() {
                 {/* Recharts Area Chart */}
                 <div className="h-64 w-full pt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={WEEKLY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={trend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="indigoGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
@@ -301,16 +313,14 @@ export default function AdultDashboardPage() {
               <div className="lg:col-span-4 flex flex-col space-y-6 justify-between">
                 <StatCard
                   title={COPY.dashboardMorning.statStudyHours}
-                  value="32.4h"
-                  trend={{ value: "12%", isUp: true }}
+                  value={analytics ? `${(analytics.total_study_minutes / 60).toFixed(1)}h` : '0h'}
                   subtitle="Target: 35.0h / week"
                   className="flex-1"
                 />
 
                 <StatCard
                   title={COPY.dashboardMorning.statDeepSessions}
-                  value="14"
-                  trend={{ value: "2", isUp: false }}
+                  value={analytics ? String(analytics.sessions) : '0'}
                   subtitle="Average length: 45 min"
                   className="flex-1"
                 />
@@ -366,21 +376,21 @@ export default function AdultDashboardPage() {
                 <span className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider">
                   {COPY.dashboardEvening.goalTitle}
                 </span>
-                <span className="text-base font-extrabold text-indigo">82%</span>
+                <span className="text-base font-extrabold text-indigo">{analytics?.completion_rate ?? 0}%</span>
               </div>
 
               {/* Solid Blue Horizontal Progress Bar */}
               <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                 <div
                   className="bg-indigo h-full rounded-full transition-all duration-700"
-                  style={{ width: '82%' }}
+                  style={{ width: `${analytics?.completion_rate ?? 0}%` }}
                 />
               </div>
 
               {/* Day Dot Indicators */}
               <div className="flex justify-between items-center pt-2">
                 {weekDays.map((day, idx) => {
-                  const isDone = idx <= 3; // Mon, Tue, Wed, Thu
+                  const isDone = (trend[idx]?.score ?? 0) > 0;
                   return (
                     <div key={day} className="flex flex-col items-center space-y-1.5">
                       <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400">{day}</span>
@@ -481,20 +491,20 @@ export default function AdultDashboardPage() {
               <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
                 {/* Well Done! Card */}
                 <div className="bg-indigo text-white rounded-2xl p-6 shadow-md space-y-4">
-                  <h3 className="text-xl font-bold">{COPY.dashboardEvening.wellDoneTitle}</h3>
+                  <h3 className="text-xl font-bold">Today&apos;s Summary</h3>
                   <p className="text-xs text-white/90 leading-relaxed font-normal">
-                    {COPY.dashboardEvening.wellDoneBody}
+                    Your focus score and task completion, based on your real study sessions.
                   </p>
 
-                  {/* Stat pair */}
+                  {/* Stat pair (real) */}
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
                       <span className="text-[10px] text-white/70 font-bold uppercase block">FOCUS SCORE</span>
-                      <span className="text-2xl font-black mt-0.5 block">94</span>
+                      <span className="text-2xl font-black mt-0.5 block">{analytics?.avg_focus_score ?? 0}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-white/70 font-bold uppercase block">EFFICIENCY</span>
-                      <span className="text-2xl font-black mt-0.5 block">+12%</span>
+                      <span className="text-[10px] text-white/70 font-bold uppercase block">COMPLETION</span>
+                      <span className="text-2xl font-black mt-0.5 block">{analytics ? `${analytics.completion_rate}%` : '0%'}</span>
                     </div>
                   </div>
                 </div>
@@ -528,17 +538,10 @@ export default function AdultDashboardPage() {
                   {/* Pinned Action Button */}
                   <button
                     onClick={handleSaveReflection}
-                    disabled={isSavingReflection}
-                    className="absolute -bottom-3 right-3 py-3 px-6 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center space-x-2 z-10 cursor-pointer"
+                    className="absolute -bottom-3 right-3 py-3 px-6 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-lg active:scale-95 flex items-center space-x-2 z-10 cursor-pointer"
                   >
-                    {isSavingReflection ? (
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <span>{COPY.dashboardEvening.saveBtn}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
+                    <span>{COPY.dashboardEvening.saveBtn}</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>

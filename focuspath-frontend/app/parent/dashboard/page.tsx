@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/layout/ParentLayout';
 import { apiRequest } from '@/lib/api';
+import { getChildActivity, ChildActivity } from '@/lib/parentApi';
 import {
   Clock,
   Eye,
@@ -12,38 +13,45 @@ import {
   Calculator,
   Globe,
   Shield,
+  LogOut,
+  AlertCircle,
 } from 'lucide-react';
+
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+const fmtAway = (seconds: number) => {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.round(seconds / 60);
+  return `${m} min`;
+};
 
 export default function ParentDashboardPage() {
   const router = useRouter();
 
   // real per-child analytics (first linked child)
-  const [child, setChild] = useState<{ avg_focus_score: number; stars: number } | null>(null);
+  const [child, setChild] = useState<{ avg_focus_score: number; stars: number; study_minutes: number; sessions: number; badges: number } | null>(null);
   useEffect(() => {
-    apiRequest<{ children: { avg_focus_score: number; stars: number }[] }>('/api/analytics/parent/')
+    apiRequest<{ children: { avg_focus_score: number; stars: number; study_minutes: number; sessions: number; badges: number }[] }>('/api/analytics/parent/')
       .then((res) => setChild(res.children?.[0] || null))
       .catch(() => {});
   }, []);
   const focus = child?.avg_focus_score ?? 0;
   const stars = child?.stars ?? 0;
+  const studyHours = child ? (child.study_minutes / 60).toFixed(1) : '0.0';
+  const sessions = child?.sessions ?? 0;
+  const badges = child?.badges ?? 0;
   const ringOffset = Math.round(264 * (1 - focus / 100));
 
-  // Mock data matching the design mockup
-  const dailyStudyData = [
-    { day: 'Mon', hours: 3.2, active: false },
-    { day: 'Tue', hours: 4.0, active: false },
-    { day: 'Wed', hours: 3.8, active: false },
-    { day: 'Thu', hours: 4.2, active: false },
-    { day: 'Fri', hours: 4.5, active: true },
-    { day: 'Sat', hours: 2.1, active: false },
-    { day: 'Sun', hours: 1.5, active: false },
-  ];
-
-  const mostUsedApps = [
-    { name: 'Library Pro', time: '2.1h', icon: BookOpen, color: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' },
-    { name: 'Math Master', time: '1.4h', icon: Calculator, color: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' },
-    { name: 'Global Lingua', time: '0.8h', icon: Globe, color: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' },
-  ];
+  // real "left the app / came back" log, so a parent can see exactly when + how long
+  const [activity, setActivity] = useState<ChildActivity | null>(null);
+  useEffect(() => {
+    apiRequest<{ id: number }[]>('/api/parents/kids/')
+      .then((kids) => {
+        if (kids.length) return getChildActivity(kids[0].id).then(setActivity);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <ParentLayout pendingRequestsCount={1}>
@@ -95,7 +103,7 @@ export default function ParentDashboardPage() {
             <div className="text-center space-y-1 mt-2">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Weekly Focus</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                Your child is in the top <span className="text-indigo-600 dark:text-indigo-400 font-bold">15%</span> of focused learners.
+                Average focus score across your child&apos;s recent study sessions.
               </p>
             </div>
           </div>
@@ -103,33 +111,24 @@ export default function ParentDashboardPage() {
           {/* Card 2: Daily Study Time (Col 8) */}
           <div className="col-span-12 lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-6 shadow-2xs flex flex-col justify-between min-h-[260px]">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Daily Study Time</h3>
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Last 7 Days</span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Learning Summary</h3>
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">All time</span>
             </div>
 
-            {/* Bar Histogram */}
-            <div className="pt-6 pb-2 flex items-end justify-between gap-4 px-4 h-40">
-              {dailyStudyData.map((item) => (
-                <div key={item.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-xl overflow-hidden flex flex-col justify-end h-32 relative">
-                    <div
-                      style={{ height: `${(item.hours / 5) * 100}%` }}
-                      className={`w-full rounded-t-xl transition-all duration-500 ${
-                        item.active
-                          ? 'bg-indigo-600 dark:bg-indigo-500 shadow-md shadow-indigo-600/30'
-                          : 'bg-indigo-200/70 dark:bg-indigo-950/60 hover:bg-indigo-300 dark:hover:bg-indigo-900/60'
-                      }`}
-                    />
-                  </div>
-                  <span
-                    className={`text-xs font-semibold ${
-                      item.active ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400 dark:text-slate-500'
-                    }`}
-                  >
-                    {item.day}
-                  </span>
-                </div>
-              ))}
+            {/* Real per-child learning stats */}
+            <div className="grid grid-cols-3 gap-4 pt-6">
+              <div className="bg-slate-50/60 dark:bg-slate-800/60 rounded-2xl p-5 text-center">
+                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{studyHours}h</div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">Total study time</div>
+              </div>
+              <div className="bg-slate-50/60 dark:bg-slate-800/60 rounded-2xl p-5 text-center">
+                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{sessions}</div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">Focus sessions</div>
+              </div>
+              <div className="bg-slate-50/60 dark:bg-slate-800/60 rounded-2xl p-5 text-center">
+                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{badges}</div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">Badges earned</div>
+              </div>
             </div>
           </div>
 
@@ -146,33 +145,23 @@ export default function ParentDashboardPage() {
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Screen Time</h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">vs Daily Limit</p>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Study Time</h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">total logged</p>
                 </div>
               </div>
 
-              <div className="flex items-baseline justify-between pt-1">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">4.5</span>
-                  <span className="text-sm font-bold text-slate-400 dark:text-slate-500">/ 6 hrs</span>
-                </div>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800/40">
-                  75% Used
-                </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full w-[75%]" />
+              <div className="flex items-baseline gap-1 pt-1">
+                <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{studyHours}</span>
+                <span className="text-sm font-bold text-slate-400 dark:text-slate-500">hours studied</span>
               </div>
             </div>
 
-            {/* Active Apps Container */}
+            {/* Content note */}
             <div className="bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-100/70 dark:border-indigo-900/40 rounded-2xl p-3.5 space-y-1">
               <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 tracking-wider uppercase">
-                ACTIVE APPS
+                CONTENT
               </span>
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Education, Reading</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Curated, parent-approved only</p>
             </div>
           </div>
 
@@ -187,8 +176,8 @@ export default function ParentDashboardPage() {
               <div>
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Eye Breaks</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-extrabold text-slate-900 dark:text-slate-100">12</span>
-                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">today</span>
+                  <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">On</span>
+                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">20-20-20</span>
                 </div>
               </div>
             </div>
@@ -211,29 +200,73 @@ export default function ParentDashboardPage() {
 
           {/* Most Used Learning Apps Card (Col 5) */}
           <div className="col-span-12 lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-6 shadow-2xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Most Used Learning Apps</h3>
-            
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Learning Overview</h3>
+
             <div className="space-y-3">
-              {mostUsedApps.map((app) => {
-                const IconComponent = app.icon;
-                return (
-                  <div
-                    key={app.name}
-                    className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl ${app.color} flex items-center justify-center shrink-0`}>
-                        <IconComponent className="h-4.5 w-4.5" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{app.name}</span>
-                    </div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{app.time}</span>
-                  </div>
-                );
-              })}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-800/60">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Focus sessions</span>
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{sessions}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-800/60">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Total study time</span>
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{studyHours}h</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-800/60">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Badges earned</span>
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{badges}</span>
+              </div>
             </div>
           </div>
 
+        </div>
+
+        {/* App Activity: when the child left FocusPath and for how long */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <LogOut className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">App Activity</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">When your child left FocusPath and for how long</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-right">
+              <div>
+                <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100">{activity?.switches_today ?? 0}</div>
+                <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">today</div>
+              </div>
+              <div>
+                <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100">{activity?.switches_last_7_days ?? 0}</div>
+                <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">last 7 days</div>
+              </div>
+            </div>
+          </div>
+
+          {activity?.still_away_since && (
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 rounded-2xl px-4 py-2.5 text-xs font-bold">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Currently away — left at {fmtTime(activity.still_away_since)}
+            </div>
+          )}
+
+          {activity && activity.sessions.length > 0 ? (
+            <div className="max-h-56 overflow-y-auto space-y-2">
+              {activity.sessions.map((s, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-800/60 text-xs">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    Left {fmtTime(s.left_at)} → Back {fmtTime(s.returned_at)}
+                  </span>
+                  <span className="font-semibold text-slate-400 dark:text-slate-500">away {fmtAway(s.away_seconds)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 text-center py-4">
+              No app-switching detected in the last 7 days.
+            </p>
+          )}
         </div>
 
         {/* Row 3: Weekly Performance Trends with Overlay Button */}

@@ -1,5 +1,19 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// Turn a DRF error body into a clear, user-facing message.
+// Handles { detail: "..." } and field errors like { password: ["This password is too common."] }.
+function extractMessage(errorData: any): string {
+  if (!errorData || typeof errorData !== 'object') return 'Something went wrong';
+  if (typeof errorData.detail === 'string') return errorData.detail;
+  const parts: string[] = [];
+  for (const val of Object.values(errorData)) {
+    if (Array.isArray(val)) parts.push(val.filter((x) => typeof x === 'string').join(' '));
+    else if (typeof val === 'string') parts.push(val);
+  }
+  const msg = parts.filter(Boolean).join(' ');
+  return msg || 'Something went wrong';
+}
+
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;
 }
@@ -191,8 +205,9 @@ export async function apiRequest<T = any>(
     const errorData = await response.json().catch(() => ({}));
     throw {
       status: response.status,
-      message: errorData.detail || 'Something went wrong',
+      message: extractMessage(errorData),
       code: errorData.code || null,
+      errors: errorData,
     };
   }
 

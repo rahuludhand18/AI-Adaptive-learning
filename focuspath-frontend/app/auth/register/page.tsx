@@ -110,6 +110,8 @@ export default function RegisterPage() {
               <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
+                name="username"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Choose username"
@@ -127,6 +129,8 @@ export default function RegisterPage() {
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="email"
+                name="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
@@ -144,6 +148,8 @@ export default function RegisterPage() {
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="password"
+                name="new-password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"

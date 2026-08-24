@@ -7,6 +7,7 @@ from parents.models import Restriction, ApprovalRequest
 from parents.serializers import RestrictionSerializer, ApprovalRequestSerializer, ResolveApprovalSerializer
 from users.models import User, ParentChildRelation
 from users.serializers import KidCreateSerializer, UserSerializer
+from focus.models import TabActivityEvent
 
 class IsParentUser(BasePermission):
     def has_permission(self, request, view):
@@ -103,3 +104,46 @@ class RestrictionDetailView(views.APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except PermissionError as e:
             return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+class ChildActivityView(views.APIView):
+    # Shows a parent exactly when their child left FocusPath and for how long, plus a
+    # today/this-week switch count — built from the paired LEFT/RETURN event log.
+    permission_classes = [IsParentUser]
+
+    def get(self, request, child_id):
+        parent = request.user
+        if not ParentChildRelation.objects.filter(parent=parent, child_id=child_id).exists():
+            return Response({"detail": "Not authorized to view this child's activity."}, status=status.HTTP_403_FORBIDDEN)
+
+        since = timezone.now() - timedelta(days=7)
+        events = list(TabActivityEvent.objects.filter(user_id=child_id, occurred_at__gte=since).order_by('occurred_at'))
+
+        # pair each LEFT with the next RETURN into a readable "away" interval
+        today = timezone.localtime(timezone.now()).date()
+        sessions = []
+        today_count = 0
+        pending_left = None
+        for e in events:
+            if e.event_type == TabActivityEvent.EventType.LEFT:
+                pending_left = e.occurred_at
+            elif e.event_type == TabActivityEvent.EventType.RETURN and pending_left:
+                away_seconds = int((e.occurred_at - pending_left).total_seconds())
+                sessions.append({
+                    "left_at": pending_left.isoformat(),
+                    "returned_at": e.occurred_at.isoformat(),
+                    "away_seconds": away_seconds,
+                })
+                if timezone.localtime(pending_left).date() == today:
+                    today_count += 1
+                pending_left = None
+        # still away right now (a LEFT with no matching RETURN yet)
+        still_away = pending_left.isoformat() if pending_left else None
+
+        return Response({
+            "child_id": child_id,
+            "still_away_since": still_away,
+            "switches_today": today_count,
+            "switches_last_7_days": len(sessions),
+            "sessions": list(reversed(sessions))[:50],  # most recent first
+        }, status=status.HTTP_200_OK)

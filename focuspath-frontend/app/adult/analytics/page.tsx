@@ -6,8 +6,8 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { StatCard } from '@/components/ui/StatCard';
-import { SUBJECT_COMPLETIONS } from '@/services/focusApi';
 import { apiRequest } from '@/lib/api';
+import { listTasks } from '@/lib/plannerApi';
 import { Flame, Sparkles, ArrowRight, Cpu } from 'lucide-react';
 
 interface AdultAnalytics {
@@ -32,13 +32,32 @@ export default function AdultAnalyticsPage() {
   const [timeframe, setTimeframe] = useState('Last 30 Days');
   const [stats, setStats] = useState<AdultAnalytics | null>(null);
   const [trend, setTrend] = useState(INSIGHTS_TREND);
+  const [subjectStats, setSubjectStats] = useState<{ subject: string; percentage: number }[]>([]);
 
-  // load the adult's real analytics summary
+  // load the adult's real analytics summary + per-subject completion from tasks
   useEffect(() => {
     apiRequest<AdultAnalytics>('/api/analytics/adult/')
       .then((res) => {
         setStats(res);
         if (res.weekly_focus?.length) setTrend(res.weekly_focus);
+      })
+      .catch(() => {});
+
+    listTasks()
+      .then((ts) => {
+        const active = ts.filter((t) => t.status !== 'ARCHIVED');
+        const map: Record<string, { total: number; done: number }> = {};
+        active.forEach((t) => {
+          map[t.title] = map[t.title] || { total: 0, done: 0 };
+          map[t.title].total += 1;
+          if (t.status === 'COMPLETED') map[t.title].done += 1;
+        });
+        setSubjectStats(
+          Object.entries(map).map(([subject, v]) => ({
+            subject,
+            percentage: Math.round((v.done / v.total) * 100),
+          })),
+        );
       })
       .catch(() => {});
   }, []);
@@ -175,7 +194,10 @@ export default function AdultAnalyticsPage() {
             </h3>
 
             <div className="space-y-5 pt-1">
-              {SUBJECT_COMPLETIONS.map((item) => (
+              {subjectStats.length === 0 && (
+                <p className="text-xs text-textSecondary dark:text-slate-400">No subject data yet — generate a plan and complete some blocks.</p>
+              )}
+              {subjectStats.map((item) => (
                 <div key={item.subject} className="space-y-2">
                   <div className="flex justify-between text-xs font-bold text-textPrimary dark:text-slate-200">
                     <span>{item.subject}</span>

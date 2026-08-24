@@ -133,7 +133,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Local time zone so generated study blocks use real local hours (9 AM = 9 AM, not UTC).
+# USE_TZ stays True, so values are still stored as UTC in the DB and converted on display.
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 

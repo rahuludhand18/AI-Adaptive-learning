@@ -4,6 +4,7 @@ export interface Subject {
   priority: number;
   deadline: string;
   icon: string;
+  topics?: string[]; // per-subject topics extracted from the syllabus (divided across blocks)
 }
 
 export interface TimeBlock {
@@ -14,6 +15,7 @@ export interface TimeBlock {
   status: 'completed' | 'active' | 'upcoming';
   type: 'default' | 'active' | 'completed' | 'special' | 'empty' | 'warm';
   dayIndex: number; // 0=Mon, 6=Sun
+  dateKey?: string; // actual calendar date 'YYYY-MM-DD' (distinguishes the same weekday across weeks)
   subjectId?: string;
 }
 

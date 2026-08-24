@@ -22,3 +22,21 @@ class FocusSession(models.Model):
 
     def __str__(self):
         return f"Session for {self.user.username} (Switches: {self.tab_switch_count}, Score: {self.focus_score})"
+
+
+# One row per tab-hide/tab-return, so a parent can see exactly when a child left the app
+# and how long they were away (event_type='left' then a paired 'return').
+class TabActivityEvent(models.Model):
+    class EventType(models.TextChoices):
+        LEFT = 'LEFT', 'Left'
+        RETURN = 'RETURN', 'Return'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tab_activity_events')
+    event_type = models.CharField(max_length=10, choices=EventType.choices)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['occurred_at']
+
+    def __str__(self):
+        return f"{self.user.username} {self.event_type} @ {self.occurred_at}"

@@ -13,11 +13,13 @@ export function useTabTracker() {
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'hidden') {
+        // log the exact moment they left, so a parent can see when + how long (paired with RETURN below)
+        apiRequest('/api/focus/tab-event/', { method: 'POST', body: JSON.stringify({ event_type: 'LEFT' }) }).catch(() => {});
         try {
           const res = await apiRequest('/api/focus/tab-switch/', {
             method: 'POST',
           });
-          
+
           if (res.tab_switch_count) {
             updateUser({ tab_switch_count: res.tab_switch_count });
           }
@@ -28,6 +30,8 @@ export function useTabTracker() {
             router.push('/auth/login?locked=true');
           }
         }
+      } else if (document.visibilityState === 'visible') {
+        apiRequest('/api/focus/tab-event/', { method: 'POST', body: JSON.stringify({ event_type: 'RETURN' }) }).catch(() => {});
       }
     };
 
