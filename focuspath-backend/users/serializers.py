@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from users.models import User, ParentChildRelation
+from users.models import User, ParentChildRelation, UserRoutine
+
+class UserRoutineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserRoutine
+        exclude = ('id', 'user')
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,18 +35,24 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-class KidCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+import secrets
+import string
 
+class KidCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'password')
+        fields = ('username',)
 
     def create(self, validated_data):
         parent = self.context['request'].user
+        
+        # Auto-generate a highly secure random password since children don't log in directly
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        secure_password = ''.join(secrets.choice(alphabet) for i in range(24))
+        
         user = User.objects.create_user(
             username=validated_data['username'],
-            password=validated_data['password'],
+            password=secure_password,
             role=User.Roles.KID
         )
         # Create relation

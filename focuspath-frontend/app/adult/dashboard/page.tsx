@@ -13,7 +13,7 @@ import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
 import { WEEKLY_TREND, TimeBlock } from '@/services/focusApi';
 import { apiRequest } from '@/lib/api';
-import { listTasks, taskToTimeBlock } from '@/lib/plannerApi';
+import { listSessions, sessionToTimeBlock, listSubjects, Subject } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Clock,
@@ -44,17 +44,21 @@ export default function AdultDashboardPage() {
 
   // real data for the dashboard: today's blocks + weekly focus trend
   const [todayBlocks, setTodayBlocks] = useState<TimeBlock[]>([]);
+  const [activeSubjects, setActiveSubjects] = useState<Subject[]>([]);
   const [trend, setTrend] = useState(WEEKLY_TREND);
   const [analytics, setAnalytics] = useState<{ avg_focus_score: number; total_study_minutes: number; sessions: number; completion_rate: number } | null>(null);
 
   useEffect(() => {
     const todayIdx = (new Date().getDay() + 6) % 7; // Mon=0..Sun=6
-    listTasks()
+    listSessions()
       .then((ts) =>
         setTodayBlocks(
-          ts.filter((t) => t.status !== 'ARCHIVED').map(taskToTimeBlock).filter((b) => b.dayIndex === todayIdx),
+          ts.map(sessionToTimeBlock).filter((b) => b.dayIndex === todayIdx),
         ),
       )
+      .catch(() => {});
+    listSubjects()
+      .then((subs) => setActiveSubjects(subs))
       .catch(() => {});
     apiRequest<{ weekly_focus: { day: string; score: number }[]; avg_focus_score: number; total_study_minutes: number; sessions: number; completion_rate: number }>('/api/analytics/adult/')
       .then((a) => {
@@ -67,25 +71,6 @@ export default function AdultDashboardPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // A simple, real suggestion computed from today's blocks (no mock "AI").
-  const pendingToday = todayBlocks.filter((b) => b.status !== 'completed').length;
-  const nextBlock = todayBlocks.find((b) => b.status !== 'completed');
-  let suggestionBody: string;
-  let suggestionBtn: string;
-  let suggestionAction: () => void;
-  if (todayBlocks.length === 0) {
-    suggestionBody = 'No study blocks scheduled yet. Upload your syllabus to generate a personalised plan.';
-    suggestionBtn = 'Create Plan';
-    suggestionAction = () => router.push('/adult/onboarding');
-  } else if (pendingToday > 0) {
-    suggestionBody = `You have ${pendingToday} block${pendingToday > 1 ? 's' : ''} left today${nextBlock ? ` — next up: ${nextBlock.title}` : ''}.`;
-    suggestionBtn = 'Rebuild Plan';
-    suggestionAction = () => router.push('/adult/planner/rebuild');
-  } else {
-    suggestionBody = "All of today's blocks are done — great work! Review your progress or plan ahead.";
-    suggestionBtn = 'View Progress';
-    suggestionAction = () => router.push('/adult/progress');
-  }
 
   const handleAddNewTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,16 +160,28 @@ export default function AdultDashboardPage() {
                 </p>
               </div>
 
-              {/* Card 2: AI Suggestion GradientInsightCard */}
-              <div className="min-h-[280px] flex">
-                <GradientInsightCard
-                  title={COPY.dashboardMorning.aiTitle}
-                  body={suggestionBody}
-                  btnText={suggestionBtn}
-                  onBtnClick={suggestionAction}
-                  isLoading={false}
-                  variant="indigo"
-                />
+              {/* Card 2: Total Subjects Overview */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col items-center justify-center text-center min-h-[280px]">
+                <span className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider mb-4">
+                  Subject Overview
+                </span>
+                
+                <div className="w-24 h-24 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo flex items-center justify-center border-4 border-indigo-100 dark:border-indigo-800 mb-4">
+                  <span className="text-3xl font-black">{activeSubjects.length}</span>
+                </div>
+                
+                <h3 className="text-lg font-bold text-textPrimary dark:text-slate-100">
+                  Active Subjects
+                </h3>
+                <p className="text-xs text-textSecondary dark:text-slate-400 font-medium max-w-[200px] mt-2">
+                  You are currently tracking and studying {activeSubjects.length} subjects.
+                </p>
+                <button
+                  onClick={() => router.push('/adult/onboarding')}
+                  className="mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 rounded-xl transition-colors"
+                >
+                  Manage Subjects
+                </button>
               </div>
 
               {/* Card 3: Today's Timetable List */}
@@ -233,8 +230,16 @@ export default function AdultDashboardPage() {
                             <Clock className="w-4 h-4 text-textSecondary dark:text-slate-400 shrink-0" />
                           )}
                           <div>
-                            <h4 className="text-xs font-bold">{block.title}</h4>
-                            <p className="text-[11px] opacity-75">{block.timeRange}</p>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="text-xs font-bold text-textPrimary dark:text-slate-100">{block.title}</h4>
+                              {block.moduleTitle && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                                  {block.moduleTitle}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-textSecondary dark:text-slate-400 line-clamp-1 mt-0.5 font-medium">{block.subtitle}</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">{block.timeRange}</p>
                           </div>
                         </div>
 

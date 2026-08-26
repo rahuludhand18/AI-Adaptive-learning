@@ -5,7 +5,7 @@ from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from planner.models import Task
+from planner.models import StudySession
 from focus.models import FocusSession
 from rewards.models import StarReward, ChildBadge
 from users.models import User, ParentChildRelation
@@ -17,9 +17,9 @@ class AdultAnalyticsView(views.APIView):
 
     def get(self, request):
         user = request.user
-        tasks = Task.objects.filter(user=user).exclude(status=Task.Statuses.ARCHIVED)
+        tasks = StudySession.objects.filter(user=user)
         total = tasks.count()
-        completed = tasks.filter(status=Task.Statuses.COMPLETED).count()
+        completed = tasks.filter(is_completed=True).count()
 
         sessions = FocusSession.objects.filter(user=user, is_active=False)
         avg_focus = sessions.aggregate(a=Avg('focus_score'))['a'] or 0

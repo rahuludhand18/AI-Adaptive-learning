@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { AiAssistant } from '@/components/AiAssistant';
 import {
   Activity,
   Shield,
@@ -12,7 +13,10 @@ import {
   User,
   Settings,
   LogOut,
-  Lightbulb
+  Lightbulb,
+  Users,
+  Calendar,
+  MessageSquare
 } from 'lucide-react';
 
 interface ParentLayoutProps {
@@ -54,6 +58,11 @@ export default function ParentLayout({ children, pendingRequestsCount = 1 }: Par
       href: '/parent/account',
       icon: User,
     },
+    {
+      name: 'Planner',
+      href: '/parent/planner',
+      icon: Calendar,
+    },
   ];
 
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'P';
@@ -91,7 +100,7 @@ export default function ParentLayout({ children, pendingRequestsCount = 1 }: Par
               className="flex items-center gap-2 focus:outline-none cursor-pointer"
               title="Parent Account"
             >
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs flex items-center justify-center shadow-sm ring-2 ring-indigo-600/20 dark:ring-indigo-500/30 hover:ring-indigo-600 transition-all">
+              <div suppressHydrationWarning className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs flex items-center justify-center shadow-sm ring-2 ring-indigo-600/20 dark:ring-indigo-500/30 hover:ring-indigo-600 transition-all">
                 {userInitial}
               </div>
             </button>
@@ -113,6 +122,17 @@ export default function ParentLayout({ children, pendingRequestsCount = 1 }: Par
                 >
                   <User className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                   Account & Profiles
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDropdown(false);
+                    document.cookie = 'activeRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    router.push('/select-profile');
+                  }}
+                  className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors cursor-pointer text-left"
+                >
+                  <Users className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  Switch Profile
                 </button>
                 <button
                   onClick={() => {
@@ -210,6 +230,7 @@ export default function ParentLayout({ children, pendingRequestsCount = 1 }: Par
           <div className="max-w-6xl mx-auto space-y-6">{children}</div>
         </main>
       </div>
+      <AiAssistant />
     </div>
   );
 }

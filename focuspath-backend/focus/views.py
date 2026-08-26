@@ -60,8 +60,11 @@ class TabSwitchView(views.APIView):
             "locked": False
         }
 
-        # Check rules for KID mode
-        if user.role == User.Roles.KID:
+        # Check rules for KID mode (native kid account OR adult using child profile)
+        active_role_cookie = request.COOKIES.get('activeRole')
+        is_kid_mode = user.role == User.Roles.KID or active_role_cookie == 'child'
+        
+        if is_kid_mode:
             if user.tab_switch_count >= 3:
                 user.is_locked = True
                 user.save()
