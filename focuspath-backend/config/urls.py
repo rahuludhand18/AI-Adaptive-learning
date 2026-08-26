@@ -20,11 +20,14 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),
+    path('api/user/', include('users.urls')),
     path('api/focus/', include('focus.urls')),
     path('api/planner/', include('planner.urls')),
     path('api/parents/', include('parents.urls')),
     path('api/rewards/', include('rewards.urls')),
     path('api/content/', include('content.urls')),
     path('api/analytics/', include('analytics.urls')),
+    path('api/learn/videos/', __import__('content.views').views.YouTubeSearchView.as_view(), name='learn-videos'),
+    path('api/learn/video-chat/', __import__('content.views').views.VideoChatView.as_view(), name='video-chat'),
     path('api/kids/', include('kids.urls')),
 ]

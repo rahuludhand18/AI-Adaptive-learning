@@ -65,3 +65,25 @@ class UserProfileView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+from django.contrib.auth.hashers import check_password, make_password
+
+class VerifyPinView(generics.GenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        pin = request.data.get('pin')
+        if not pin or len(str(pin)) != 4:
+            return Response({"success": False, "error": "Invalid PIN format. Must be 4 digits."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        user = request.user
+        # If no PIN is set, the first one entered becomes the PIN
+        if not user.parent_pin:
+            user.parent_pin = make_password(str(pin))
+            user.save()
+            return Response({"success": True, "role_token": "parent"})
+            
+        if check_password(str(pin), user.parent_pin):
+            return Response({"success": True, "role_token": "parent"})
+            
+        return Response({"success": False, "error": "Incorrect PIN."}, status=status.HTTP_403_FORBIDDEN)

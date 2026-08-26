@@ -18,7 +18,6 @@ export default function ParentAccountPage() {
   const { user } = useAuthStore();
 
   const [newKidUsername, setNewKidUsername] = useState('');
-  const [newKidPassword, setNewKidPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +38,7 @@ export default function ParentAccountPage() {
 
   const handleAddKid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKidUsername.trim() || !newKidPassword.trim()) return;
+    if (!newKidUsername.trim()) return;
 
     setLoading(true);
     setSuccess(null);
@@ -49,15 +48,13 @@ export default function ParentAccountPage() {
         method: 'POST',
         body: JSON.stringify({
           username: newKidUsername.trim(),
-          password: newKidPassword.trim(),
         }),
       });
       setSuccess(`Child account "${newKid.username}" created and linked to your Parent account.`);
       setNewKidUsername('');
-      setNewKidPassword('');
       fetchKids();
     } catch (err: any) {
-      setError(err.message || 'Failed to create child profile. Username might be already taken or password does not meet security requirements.');
+      setError(err.message || 'Failed to create child profile. Username might be already taken.');
     } finally {
       setLoading(false);
     }
@@ -151,14 +148,6 @@ export default function ParentAccountPage() {
                 placeholder="Child Username (e.g. Alex)"
                 value={newKidUsername}
                 onChange={(e) => setNewKidUsername(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Create Password"
-                value={newKidPassword}
-                onChange={(e) => setNewKidPassword(e.target.value)}
                 className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />

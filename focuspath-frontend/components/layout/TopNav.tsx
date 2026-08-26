@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Settings, UploadCloud, LogOut, User as UserIcon } from 'lucide-react';
+import { Bell, Settings, UploadCloud, LogOut, User as UserIcon, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
@@ -11,6 +11,9 @@ export const TopNav: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : 'U';
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -82,14 +85,14 @@ export const TopNav: React.FC = () => {
         {/* Right: Quick Action Button, Icons, Theme Toggle & Avatar Dropdown */}
         <div className="flex items-center space-x-3 sm:space-x-3.5">
           
-          {/* Upload Syllabus Global Option */}
+          {/* Add Subject Global Option */}
           <Link
             href="/adult/onboarding"
             className="py-2 px-3.5 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-xl border border-indigo-100 dark:border-indigo-800/40 transition-colors flex items-center space-x-1.5"
-            title="Upload new course syllabus to generate schedule"
+            title="Add a new subject to track"
           >
-            <UploadCloud className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span className="hidden sm:inline">Upload Syllabus</span>
+            <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="hidden sm:inline">Add Subject</span>
           </Link>
 
           {/* Theme Toggle Button */}
@@ -118,7 +121,7 @@ export const TopNav: React.FC = () => {
               title="User profile"
             >
               <span className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-xs font-bold">
-                {initials}
+                {mounted ? initials : 'U'}
               </span>
             </button>
 
@@ -128,10 +131,10 @@ export const TopNav: React.FC = () => {
                 {/* User Header Info */}
                 <div className="flex items-center space-x-3 p-2 bg-indigo-50/50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
                   <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center bg-indigo-600 text-white text-xs font-bold">
-                    {initials}
+                    {mounted ? initials : 'U'}
                   </div>
                   <div className="overflow-hidden">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{user?.username || 'User'}</h4>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{mounted && user?.username ? user.username : 'User'}</h4>
                     <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900 inline-block mt-0.5">
                       Adult Mode
                     </span>

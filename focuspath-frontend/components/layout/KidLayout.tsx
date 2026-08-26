@@ -4,14 +4,19 @@ import { ReactNode, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+import { useTabTracker } from '@/hooks/useTabTracker';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { AiAssistant } from '@/components/AiAssistant';
 import {
   Home,
   BookOpen,
   Trophy,
   LogOut,
   GraduationCap,
-  Puzzle
+  Puzzle,
+  Users,
+  MessageSquare,
+  Calendar
 } from 'lucide-react';
 
 interface KidLayoutProps {
@@ -25,8 +30,12 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
   const { user, logout } = useAuthStore();
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Enable Tab tracking for kids mode and get UI states
+  const { showWarning, setShowWarning, isLockedOut, tabSwitchCount } = useTabTracker();
+
   const topNavItems = [
     { name: 'Home', href: '/kid/dashboard', icon: Home },
+    { name: 'Schedule', href: '/kid/planner', icon: Calendar },
     { name: 'Learn', href: '/kid/learn', icon: GraduationCap },
     { name: 'Quests', href: '/kid/quests', icon: Puzzle },
     { name: 'Story', href: '/kid/stories', icon: BookOpen },
@@ -91,6 +100,7 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
           {/* User Profile Avatar Dropdown */}
           <div className="relative">
             <button
+              suppressHydrationWarning
               onClick={() => setShowDropdown(!showDropdown)}
               className="w-9 h-9 rounded-full bg-primary text-white font-bold text-xs flex items-center justify-center shadow-sm ring-2 ring-primary/20 dark:ring-primary/40 hover:ring-primary transition-all cursor-pointer"
               title="Kid Profile"
@@ -106,6 +116,17 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
                   </p>
                   <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Kid Mode Active</p>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowDropdown(false);
+                    document.cookie = 'activeRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    router.push('/select-profile');
+                  }}
+                  className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors cursor-pointer text-left"
+                >
+                  <Users className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  Switch Profile
+                </button>
                 <button
                   onClick={() => {
                     setShowDropdown(false);
@@ -130,6 +151,53 @@ export default function KidLayout({ children, starsCount = 250 }: KidLayoutProps
           <div className="max-w-6xl mx-auto space-y-6">{children}</div>
         </main>
       </div>
+
+      {/* WARNING MODAL */}
+      {showWarning && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-8 md:p-12 border border-amber-200 dark:border-amber-900 shadow-2xl space-y-6">
+            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/40 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-2">Focus Lost!</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                You left the FocusPath tab! (Warning {tabSwitchCount} of 3)
+              </p>
+              <p className="text-xs text-rose-500 font-bold mt-2">
+                If you reach 3 strikes, your account will be locked.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowWarning(false)}
+              className="w-full py-3.5 px-6 bg-amber-500 text-white font-bold text-sm rounded-xl hover:bg-amber-600 transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              I understand, let me back in
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LOCKOUT SCREEN */}
+      {isLockedOut && (
+        <div className="fixed inset-0 z-[200] bg-rose-950 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-xl space-y-8 animate-in zoom-in duration-300">
+            <div className="text-7xl">🚫</div>
+            <div className="space-y-4">
+              <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight">Session Terminated</h2>
+              <p className="text-lg text-rose-200/80 font-medium max-w-md mx-auto">
+                You switched tabs 3 times. Your parent has been notified.
+              </p>
+              <p className="text-sm text-rose-300/60 font-medium max-w-md mx-auto animate-pulse">
+                Logging you out automatically...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating AI Assistant Chatbot */}
+      <AiAssistant />
 
     </div>
   );

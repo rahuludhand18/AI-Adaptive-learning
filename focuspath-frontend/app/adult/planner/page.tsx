@@ -10,7 +10,7 @@ import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
 import { TimeBlock } from '@/services/focusApi';
 import { apiRequest } from '@/lib/api';
-import { listTasks, createTask, updateTask, deleteTask, clearSchedule, carryOverOverdue, taskToTimeBlock, timeBlockToTaskPayload } from '@/lib/plannerApi';
+import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteTask, timeBlockToTaskPayload, updateTask, createTask } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Circle,
@@ -24,25 +24,37 @@ import {
   RotateCcw,
   X,
   UploadCloud,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
+
+// Helper to parse time string ("08:00" or "03:00 PM" or "16:00") into minutes of day
+function parseMinutes(timeStr: string): number {
+  const m = timeStr.trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!m) return 0;
+  let hh = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  const ap = m[3]?.toUpperCase();
+  if (ap === 'PM' && hh < 12) hh += 12;
+  if (ap === 'AM' && hh === 12) hh = 0;
+  return hh * 60 + mm;
+}
 
 // "HH:MM - HH:MM" -> duration in minutes
 function blockMinutes(timeRange: string): number {
-  const m = timeRange.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-  if (!m) return 0;
-  const start = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-  const end = parseInt(m[3], 10) * 60 + parseInt(m[4], 10);
-  return Math.max(0, end - start);
+  const [start, end] = timeRange.split('-');
+  if (!start || !end) return 0;
+  return Math.max(0, parseMinutes(end) - parseMinutes(start));
 }
 
 // start / end minutes-of-day from a "HH:MM - HH:MM" range
 function rangeStartMin(timeRange: string): number {
-  const m = timeRange.match(/(\d{1,2}):(\d{2})/);
-  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+  const [start] = timeRange.split('-');
+  return start ? parseMinutes(start) : 0;
 }
 function rangeEndMin(timeRange: string): number {
-  const m = timeRange.match(/-\s*(\d{1,2}):(\d{2})/);
-  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+  const [, end] = timeRange.split('-');
+  return end ? parseMinutes(end) : 0;
 }
 
 export default function AdultPlannerPage() {
@@ -56,8 +68,8 @@ export default function AdultPlannerPage() {
 
   const loadBlocks = async () => {
     try {
-      const tasks = await listTasks();
-      setBlocks(tasks.filter((t) => t.status !== 'ARCHIVED').map(taskToTimeBlock));
+      const sessions = await listSessions();
+      setBlocks(sessions.map(sessionToTimeBlock));
     } catch {
       // leave the grid empty if the request fails
     }
@@ -82,9 +94,9 @@ export default function AdultPlannerPage() {
   // toggle a block's completion and persist it — completion only ever reflects a real student action
   const toggleComplete = async (block: TimeBlock, e: React.MouseEvent) => {
     e.stopPropagation(); // don't open the focus timer
-    const nextStatus = block.status === 'completed' ? 'ACTIVE' : 'COMPLETED';
+    const nextStatus = block.status === 'completed' ? false : true;
     try {
-      await updateTask(Number(block.id), { status: nextStatus });
+      await updateSession(Number(block.id), { is_completed: nextStatus });
       await loadBlocks();
     } catch {
       // ignore; UI stays as-is if the update fails
@@ -133,6 +145,7 @@ export default function AdultPlannerPage() {
 
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => (new Date().getDay() + 6) % 7); // default to today
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   // block currently being edited; null means the modal is in "add new" mode
   const [editingBlock, setEditingBlock] = useState<TimeBlock | null>(null);
@@ -268,10 +281,17 @@ export default function AdultPlannerPage() {
           {block.timeRange}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className={`text-sm font-bold truncate ${isCompleted ? 'text-textSecondary dark:text-slate-500 line-through' : 'text-textPrimary dark:text-slate-100'}`}>
-            {block.title}
-          </h4>
-          <p className="text-xs text-textSecondary dark:text-slate-400 truncate">{block.subtitle}</p>
+          <div className="flex items-center space-x-2">
+            <h4 className={`text-sm font-bold truncate ${isCompleted ? 'text-textSecondary dark:text-slate-500 line-through' : 'text-textPrimary dark:text-slate-100'}`}>
+              {block.title}
+            </h4>
+            {block.moduleTitle && (
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${isCompleted ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700' : 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-800'}`}>
+                {block.moduleTitle}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-textSecondary dark:text-slate-400 truncate mt-0.5 font-medium">{block.subtitle}</p>
         </div>
         {isActive && (
           <span className="text-[9px] font-black bg-indigo text-white px-1.5 py-0.5 rounded uppercase shrink-0">CURRENT</span>
@@ -341,13 +361,13 @@ export default function AdultPlannerPage() {
           {/* Action Buttons: Upload Syllabus + Week / Month Toggle */}
           <div className="flex items-center space-x-3 self-start sm:self-auto">
             
-            {/* Upload Syllabus Link Button */}
+            {/* Add Subject Link Button */}
             <Link
               href="/adult/onboarding"
               className="py-2 px-3.5 bg-indigo-light dark:bg-indigo-950/50 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/50 text-indigo dark:text-indigo-400 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-indigo/20 shadow-sm"
             >
-              <UploadCloud className="w-4 h-4 text-indigo dark:text-indigo-400" />
-              <span>Upload Syllabus</span>
+              <Plus className="w-4 h-4 text-indigo dark:text-indigo-400" />
+              <span>Add Subject</span>
             </Link>
 
             {/* Delete Syllabus — clears the whole timetable */}
@@ -434,8 +454,15 @@ export default function AdultPlannerPage() {
                     {prettyDate(block.dateKey)} · {block.timeRange}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-textPrimary dark:text-slate-100 truncate">{block.title}</h4>
-                    <p className="text-xs text-textSecondary dark:text-slate-400 truncate">{block.subtitle}</p>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-sm font-bold text-textPrimary dark:text-slate-100 truncate">{block.title}</h4>
+                      {block.moduleTitle && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800">
+                          {block.moduleTitle}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-textSecondary dark:text-slate-400 truncate mt-0.5 font-medium">{block.subtitle}</p>
                   </div>
                   <button
                     onClick={(e) => toggleComplete(block, e)}
@@ -455,7 +482,7 @@ export default function AdultPlannerPage() {
           const selected = days[selectedDayIndex];
           const dayBlocks = blocks
             .filter((b) => b.dateKey === selected?.dateKey)
-            .sort((a, b) => a.timeRange.localeCompare(b.timeRange));
+            .sort((a, b) => rangeStartMin(a.timeRange) - rangeStartMin(b.timeRange));
           return (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 shadow-card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
@@ -486,7 +513,7 @@ export default function AdultPlannerPage() {
             {days.map((day) => {
               const dayBlocks = blocks
                 .filter((b) => b.dateKey === day.dateKey)
-                .sort((a, b) => a.timeRange.localeCompare(b.timeRange));
+                .sort((a, b) => rangeStartMin(a.timeRange) - rangeStartMin(b.timeRange));
               return (
                 <div key={day.day} className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 shadow-card overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3 border-b border-border dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
@@ -512,12 +539,12 @@ export default function AdultPlannerPage() {
         {/* MONTH VIEW — calendar grid with per-day block counts */}
         {viewMode === 'month' && (() => {
           const now = new Date();
-          const year = now.getFullYear();
-          const month = now.getMonth();
-          const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+          const year = currentMonth.getFullYear();
+          const month = currentMonth.getMonth();
+          const monthLabel = currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
           const startOffset = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
           const daysInMonth = new Date(year, month + 1, 0).getDate();
-          const todayKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           const counts: Record<string, number> = {};
           blocks.forEach((b) => { if (b.dateKey) counts[b.dateKey] = (counts[b.dateKey] || 0) + 1; });
           const cells: (number | null)[] = [];
@@ -525,7 +552,17 @@ export default function AdultPlannerPage() {
           for (let d = 1; d <= daysInMonth; d++) cells.push(d);
           return (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 shadow-card p-5">
-              <h3 className="text-sm font-bold text-textPrimary dark:text-slate-100 mb-4">{monthLabel}</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-textPrimary dark:text-slate-100">{monthLabel}</h3>
+                <div className="flex items-center space-x-1">
+                  <button onClick={() => setCurrentMonth(new Date(year, month - 1, 1))} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-textSecondary dark:text-slate-400 transition-colors cursor-pointer">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setCurrentMonth(new Date(year, month + 1, 1))} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-textSecondary dark:text-slate-400 transition-colors cursor-pointer">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-7 gap-2">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
                   <div key={d} className="text-center text-[10px] font-bold uppercase text-textSecondary dark:text-slate-500 pb-1">{d}</div>

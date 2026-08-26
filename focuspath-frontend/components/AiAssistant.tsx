@@ -2,27 +2,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 import { askPlannerAssistant } from '@/lib/plannerApi';
 import { Bot, X, Send, GraduationCap, BookOpen, CalendarDays, UploadCloud } from 'lucide-react';
 
 type Tab = 'general' | 'syllabus' | 'planner';
 interface Msg { role: 'bot' | 'user'; text: string; }
 
-// honest, rule-based study coach for the General tab (no external LLM; deterministic tips)
-function generalReply(msg: string): string {
-  const m = msg.toLowerCase();
-  if (/(pomodoro|break|timer)/.test(m))
-    return 'Try the Pomodoro method: study 25 minutes, then take a 5-minute break. After 4 rounds, take a longer 15–30 minute break. FocusPath schedules a short break after each study block.';
-  if (/(remember|memor|retain|recall|forget)/.test(m))
-    return 'Use active recall (test yourself instead of re-reading) and spaced repetition (review after 1 day, 3 days, then a week). These are the two most evidence-backed techniques for retention.';
-  if (/(procrastinat|motivat|focus|distract)/.test(m))
-    return 'Beat procrastination by starting with just 5 minutes on the hardest task, and remove distractions (phone on silent, one tab open). Small starts build momentum.';
-  if (/(exam|test|revis)/.test(m))
-    return 'For exams: study hardest/weakest subjects first when your energy is highest, practice past papers, and do a light review the night before rather than cramming.';
-  if (/(hello|hi|hey|help)/.test(m))
-    return 'I can share study techniques — ask me about focus, memory, exam prep, or beating procrastination. For your actual timetable, switch to the Planner tab.';
-  return 'I can help with study techniques (focus, memory, exam prep). For questions about your schedule, use the Planner tab; to add your subjects, use the Syllabus tab.';
-}
+// Backend now handles all LLM replies, no local generalReply needed.
 
 const GREETINGS: Record<Tab, string> = {
   general: "Hello! I'm your General Academic Assistant. How can I help you today?",
@@ -57,19 +44,15 @@ export function AiAssistant() {
     const current = tab;
     push(current, { role: 'user', text: q });
     setInput('');
-    if (current === 'planner' || current === 'syllabus') {
-      // both answer from real stored data on the backend (schedule / subjects + topics)
-      setSending(true);
-      try {
-        const reply = await askPlannerAssistant(q, current);
-        push(current, { role: 'bot', text: reply });
-      } catch {
-        push(current, { role: 'bot', text: 'I could not reach your data right now. Please try again.' });
-      } finally {
-        setSending(false);
-      }
-    } else {
-      push(current, { role: 'bot', text: generalReply(q) });
+    setSending(true);
+    try {
+      // Send chat history (excluding the new user msg)
+      const reply = await askPlannerAssistant(q, current, messages);
+      push(current, { role: 'bot', text: reply });
+    } catch {
+      push(current, { role: 'bot', text: 'I could not reach your data right now. Please try again.' });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -132,7 +115,11 @@ export function AiAssistant() {
           {/* Syllabus quick upload action */}
           {tab === 'syllabus' && (
             <button
-              onClick={() => { setOpen(false); router.push('/adult/onboarding'); }}
+              onClick={() => { 
+                setOpen(false); 
+                const onboardingRoute = window.location.pathname.startsWith('/parent') ? '/parent/onboarding' : '/adult/onboarding';
+                router.push(onboardingRoute); 
+              }}
               className="mx-3 mt-3 flex items-center justify-center gap-2 py-2 rounded-xl border border-indigo/30 text-indigo dark:text-indigo-400 text-xs font-bold hover:bg-indigo-light/40 dark:hover:bg-indigo-950/30 transition-colors cursor-pointer"
             >
               <UploadCloud className="w-4 h-4" /> Upload Syllabus
@@ -150,7 +137,15 @@ export function AiAssistant() {
                       : 'bg-slate-100 dark:bg-slate-800 text-textPrimary dark:text-slate-100 rounded-bl-sm'
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === 'bot' ? (
+                    <div className="space-y-2 [&>p]:leading-relaxed [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&>h3]:font-bold [&>h3]:mt-3 [&>h3]:text-sm">
+                      <ReactMarkdown>
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.text
+                  )}
                 </div>
               </div>
             ))}

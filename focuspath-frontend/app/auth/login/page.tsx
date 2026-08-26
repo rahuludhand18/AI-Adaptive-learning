@@ -14,7 +14,9 @@ import {
   GraduationCap,
   BookOpen,
   ArrowLeft,
-  Pin
+  Pin,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 function LoginContent() {
@@ -27,6 +29,7 @@ function LoginContent() {
   const [loginMode, setLoginMode] = useState<'adult' | 'kid' | null>('adult');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,12 +72,12 @@ function LoginContent() {
       setAuth(res.user, res.access, res.refresh);
 
       // Redirect depending on user role
-      if (res.user.role === 'ADULT') {
-        router.push('/adult/dashboard');
-      } else if (res.user.role === 'PARENT') {
-        router.push('/parent/dashboard');
+      if (res.user.role === 'PARENT') {
+        router.push('/select-profile');
       } else if (res.user.role === 'KID') {
         router.push('/kid/dashboard');
+      } else {
+        router.push('/adult/dashboard');
       }
     } catch (err: any) {
       if (err.status === 403 && err.code === 'account_locked') {
@@ -274,19 +277,26 @@ function LoginContent() {
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="current-password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${
+                className={`w-full rounded-2xl border py-3 pl-10 pr-12 text-sm outline-none transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${
                   loginMode === 'kid'
                     ? 'border-slate-200 dark:border-slate-700 focus:border-emerald-500/60 focus:ring-emerald-500/20'
                     : 'border-slate-200 dark:border-slate-700 focus:border-indigo-600/60 focus:ring-indigo-600/20'
                 }`}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 

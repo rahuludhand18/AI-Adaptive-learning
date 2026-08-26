@@ -107,8 +107,8 @@ export default function SafeYouTubePlayer({ youtubeId, onComplete }: Props) {
             modestbranding: 1,    // reduce branding
             iv_load_policy: 3,    // hide annotations
             fs: 0,                // hide native fullscreen in favor of our kid-friendly overlay
-            disablekb: 1,         // ignore keyboard navigation
-            controls: 0,          // our own clean controls
+            disablekb: 0,         // allow keyboard navigation (arrows to scrub)
+            controls: 1,          // enable native controls for CC, Quality, and Timeline
             playsinline: 1,
           },
           events: {

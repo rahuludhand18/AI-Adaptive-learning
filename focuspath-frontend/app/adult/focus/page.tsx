@@ -22,12 +22,65 @@ function FocusSessionInner() {
 
   const [durationMin, setDurationMin] = useState(25);
   const [notes, setNotes] = useState('');
+  const [notesSaved, setNotesSaved] = useState(false);
+
+  useEffect(() => {
+    if (taskId) {
+      const saved = localStorage.getItem(`focus_notes_${taskId}`);
+      if (saved) setNotes(saved);
+    }
+  }, [taskId]);
+
+  const handleSaveNotes = () => {
+    if (taskId) {
+      localStorage.setItem(`focus_notes_${taskId}`, notes);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    }
+  };
 
   const setDuration = (mins: number) => {
     const m = Math.max(1, Math.min(180, Math.round(mins || 0)));
     setDurationMin(m);
     startSession(taskId || 'block', m);
+    setTabSwitchCount(0);
+    setIsLockedOut(false);
   };
+
+  // Focus Tracker States
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
+  const [isLockedOut, setIsLockedOut] = useState(false);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Only trigger if the session is currently running and they left the tab
+      if (document.hidden && activeSession.isRunning && !isLockedOut) {
+        setTabSwitchCount((prevCount) => {
+          const newCount = prevCount + 1;
+          
+          if (newCount < 4) {
+            // First 3 times: Show a warning modal (deferred to next tick to avoid React render crash)
+            setTimeout(() => {
+              setShowWarning(true);
+              pauseSession();
+            }, 0);
+          } else {
+            // After 3 times: Lock the session entirely
+            setTimeout(() => {
+              setIsLockedOut(true);
+              pauseSession();
+            }, 0);
+          }
+          return newCount;
+        });
+      }
+    };
+
+    // Attach the event listener to the browser
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [activeSession.isRunning, isLockedOut, pauseSession]);
 
   useEffect(() => {
     apiRequest('/api/focus/session/start', { method: 'POST' }).catch(() => {});
@@ -108,9 +161,17 @@ function FocusSessionInner() {
 
             {/* Notes / study space */}
             <div className="mt-4">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-textSecondary dark:text-slate-400 uppercase mb-1.5">
-                <NotebookPen className="w-3.5 h-3.5" /> Study notes
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-textSecondary dark:text-slate-400 uppercase">
+                  <NotebookPen className="w-3.5 h-3.5" /> Study notes
+                </label>
+                <button
+                  onClick={handleSaveNotes}
+                  className="text-[11px] font-bold px-3 py-1 rounded-full bg-indigo/10 text-indigo hover:bg-indigo/20 transition-colors cursor-pointer"
+                >
+                  {notesSaved ? 'Saved!' : 'Save Notes'}
+                </button>
+              </div>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -177,6 +238,58 @@ function FocusSessionInner() {
           </p>
         </aside>
       </main>
+
+      {/* WARNING MODAL */}
+      {showWarning && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-8 md:p-12 border border-rose-200 dark:border-rose-900 shadow-2xl space-y-6">
+            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/40 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-textPrimary dark:text-slate-100 mb-2">Focus Lost!</h2>
+              <p className="text-sm text-textSecondary dark:text-slate-300">
+                You switched tabs or minimized the window. (Warning {tabSwitchCount} of 3)
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowWarning(false);
+                resumeSession();
+              }}
+              className="w-full py-3.5 px-6 bg-amber-500 text-white font-bold text-sm rounded-xl hover:bg-amber-600 transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              I understand, resume study
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LOCKOUT SCREEN */}
+      {isLockedOut && (
+        <div className="fixed inset-0 z-[200] bg-rose-950 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-xl space-y-8">
+            <div className="text-7xl">🚫</div>
+            <div className="space-y-4">
+              <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight">Session Terminated</h2>
+              <p className="text-lg text-rose-200/80 font-medium max-w-md mx-auto">
+                You switched tabs too many times. Focus is mandatory.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsLockedOut(false);
+                setTabSwitchCount(0);
+                endSession();
+                router.push('/adult/planner');
+              }}
+              className="py-4 px-8 bg-rose-500 text-white font-black text-sm uppercase rounded-2xl hover:bg-rose-400 transition-all shadow-xl active:scale-95 cursor-pointer"
+            >
+              Cancel and Restart Session
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,31 +5,75 @@ from datetime import timedelta
 # One subject per line. Topics can follow a ':' or ' - ' and be separated by commas/semicolons,
 # e.g. "Data Structures: Arrays, Linked Lists, Trees". Lines without topics just have [].
 # Returns [{'name': str, 'topics': [str, ...]}]. Shared by the text and file endpoints.
-def parse_syllabus_text(text):
-    seen = set()
-    subjects = []
-    for line in (text or '').splitlines():
-        raw = line.strip(' -*•\t')
-        if len(raw) < 2:
-            continue
-        # split name from the topic list on the first ':' or ' - '
-        name, sep, rest = raw.partition(':')
-        if not sep:
-            name, sep, rest = raw.partition(' - ')
-        name = name.strip()
-        if len(name) < 2:
-            continue
-        key = name.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        topics = []
-        for chunk in rest.replace(';', ',').split(','):
-            t = chunk.strip(' -*•\t')
-            if len(t) >= 2:
-                topics.append(t[:120])
-        subjects.append({'name': name[:120], 'topics': topics[:20]})
-    return subjects[:30]
+import json
+import os
+
+import json
+import os
+
+try:
+    import google.generativeai as genai
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+except ImportError:
+    pass
+
+SYLLABUS_EXTRACTION_PROMPT = """
+You are an expert academic data extractor. Your objective is to analyze a raw college syllabus and convert it into a strict JSON payload.
+
+CRITICAL RULES FOR EXTRACTION:
+1. STRICT FILTERING (NO ADMINISTRATIVE TEXT): You must completely ignore and exclude administrative headers, including but not limited to: "Course Code", "CIE Marks", "SEE Marks", "Credits", "Exam Hours", "Course objectives", "Teaching-Learning Process", and "Annexure".
+2. ACADEMIC CONTENT ONLY: Only extract actual academic concepts, chapter names, and module titles. 
+3. TOTAL COURSE HOURS: Search the document for "Total Hours of Pedagogy", "Total Teaching Hours", or "Lecture Hours". Add this as an integer `total_course_hours` at the root level. If not found, do your best to estimate total hours.
+4. INDEXING: Provide an ascending integer `order_index` for modules and topics so they remain in chronological order.
+
+OUTPUT FORMAT:
+You must return ONLY valid JSON. Do not wrap the JSON in markdown formatting blocks. The JSON must perfectly match this schema:
+
+{
+  "subject_name": "String (e.g., Artificial Intelligence)",
+  "total_course_hours": 40,
+  "modules": [
+    {
+      "title": "String (e.g., Module 1: Introduction & Intelligent Agents)",
+      "order_index": 1,
+      "topics": [
+        {
+          "name": "String (e.g., The structure of agents)",
+          "order_index": 1
+        },
+        {
+          "name": "String (e.g., Concept of Rationality)",
+          "order_index": 2
+        }
+      ]
+    }
+  ]
+}
+"""
+
+def extract_syllabus_to_json(llama_parse_markdown):
+    # Force Gemini to output raw JSON without markdown blocks
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        temperature=0.1 # Keep temperature very low for data extraction
+    )
+    
+    model = genai.GenerativeModel(
+        model_name="gemini-3.6-flash",
+        system_instruction=SYLLABUS_EXTRACTION_PROMPT,
+        generation_config=generation_config
+    )
+    
+    response = model.generate_content(llama_parse_markdown)
+    
+    try:
+        # Instantly converts the LLM output into a Python dictionary!
+        structured_data = json.loads(response.text)
+        return structured_data
+    except json.JSONDecodeError:
+        print("Failed to parse JSON.")
+        return None
+
 
 
 # Move a datetime forward to the next moment inside the daily study window
