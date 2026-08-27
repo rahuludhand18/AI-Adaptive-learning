@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Plus, Youtube } from 'lucide-react';
+import { X, Plus, MonitorPlay } from 'lucide-react';
 import { addVideo } from '@/lib/parentApi';
 
 interface AddVideoModalProps {
@@ -57,7 +57,7 @@ export default function AddVideoModal({ isOpen, onClose, onAdded }: AddVideoModa
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
-              <Youtube className="h-5 w-5" />
+              <MonitorPlay className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Add Learning Video</h3>

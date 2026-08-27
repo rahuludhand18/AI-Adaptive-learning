@@ -8,6 +8,7 @@ from parents.serializers import RestrictionSerializer, ApprovalRequestSerializer
 from users.models import User, ParentChildRelation
 from users.serializers import KidCreateSerializer, UserSerializer
 from focus.models import TabActivityEvent
+from authentication.models import LoginEvent
 
 class IsParentUser(BasePermission):
     def has_permission(self, request, view):
@@ -140,10 +141,29 @@ class ChildActivityView(views.APIView):
         # still away right now (a LEFT with no matching RETURN yet)
         still_away = pending_left.isoformat() if pending_left else None
 
+        # pair LOGIN with the next LOGOUT the same way, so a parent sees every sign-in/out
+        login_events = list(LoginEvent.objects.filter(user_id=child_id, occurred_at__gte=since).order_by('occurred_at'))
+        login_sessions = []
+        pending_login = None
+        for e in login_events:
+            if e.event_type == LoginEvent.EventType.LOGIN:
+                pending_login = e.occurred_at
+            elif e.event_type == LoginEvent.EventType.LOGOUT and pending_login:
+                login_sessions.append({
+                    "login_at": pending_login.isoformat(),
+                    "logout_at": e.occurred_at.isoformat(),
+                    "duration_seconds": int((e.occurred_at - pending_login).total_seconds()),
+                })
+                pending_login = None
+        still_logged_in_since = pending_login.isoformat() if pending_login else None
+
         return Response({
             "child_id": child_id,
             "still_away_since": still_away,
             "switches_today": today_count,
             "switches_last_7_days": len(sessions),
             "sessions": list(reversed(sessions))[:50],  # most recent first
+            "still_logged_in_since": still_logged_in_since,
+            "logins_last_7_days": len(login_sessions) + (1 if still_logged_in_since else 0),
+            "login_sessions": list(reversed(login_sessions))[:50],
         }, status=status.HTTP_200_OK)

@@ -42,6 +42,31 @@ export function middleware(req: NextRequest) {
   } catch {
     role = null;
   }
+  
+  const activeRole = req.cookies.get('activeRole')?.value;
+
+  // special case: PARENT can be 'child' (for /kid) or 'parent' (for /parent)
+  if (role === 'PARENT') {
+    if (section === '/parent') {
+      if (activeRole !== 'parent') {
+        const url = req.nextUrl.clone();
+        url.pathname = '/select-profile';
+        return NextResponse.redirect(url);
+      }
+    } else if (section === '/kid') {
+      if (activeRole !== 'child') {
+        const url = req.nextUrl.clone();
+        url.pathname = '/select-profile';
+        return NextResponse.redirect(url);
+      }
+    } else {
+      // PARENT trying to access /adult -> redirect to /select-profile
+      const url = req.nextUrl.clone();
+      url.pathname = '/select-profile';
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
 
   // wrong role -> send to their own dashboard (or login if unknown)
   if (role !== SECTION_ROLE[section]) {

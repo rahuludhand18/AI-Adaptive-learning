@@ -5,6 +5,7 @@ import { useTabTracker } from '@/hooks/useTabTracker';
 import { useAuthStore } from '@/store/authStore';
 import { apiRequest } from '@/lib/api';
 import { Eye, Moon, Lock } from 'lucide-react';
+import PlayfulBackground from '@/components/kid/PlayfulBackground';
 
 // 20-20-20 rule default; overridden by the parent's configured interval.
 const DEFAULT_EYE_BREAK_MIN = 20;
@@ -92,6 +93,7 @@ export default function KidModeLayout({ children }: { children: React.ReactNode 
 
   return (
     <>
+      {isKid && <PlayfulBackground />}
       {children}
 
       {/* Locked by parent / expired temporary session (top priority) */}

@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import KidLayout from '@/components/layout/KidLayout';
 import SafeYouTubePlayer from '@/components/kid/SafeYouTubePlayer';
+import { useAuthStore } from '@/store/authStore';
+import VideoCompanion from '@/components/kid/VideoCompanion';
 import { apiRequest } from '@/lib/api';
 import {
   BookOpen,
@@ -54,11 +56,13 @@ interface Topic {
 
 interface Video {
   id: number;
-  topic: number;
-  youtube_id: string;
+  topic?: number;
+  youtube_id?: string;
+  video_id?: string; // from YouTube API
   title: string;
-  duration_seconds: number;
-  source_channel: string;
+  thumbnail_url?: string; // from YouTube API
+  duration_seconds?: number;
+  source_channel?: string;
   age_min?: number;
   age_max?: number;
   takeaways?: string[];
@@ -198,8 +202,18 @@ function getSubjectIcon(name: string) {
   return <BookOpen className="h-5 w-5 text-primary" />;
 }
 
+// which grade-level name to prefer for each age bracket a parent can assign
+const AGE_GROUP_LEVEL_HINT: Record<string, string> = {
+  '1-3': 'Kindergarten',
+  '4-6': 'Kindergarten',
+  '7-8': 'Grade 1',
+  '9-10': 'Grade 3',
+  '11-12': 'Grade 6',
+};
+
 export default function KidLearnPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
 
   // State for Catalog
   const [levels, setLevels] = useState<Level[]>([]);
@@ -234,27 +248,35 @@ export default function KidLearnPage() {
       .catch(() => {});
   }, []);
 
+  // pick the level whose name best matches the child's age bracket; falls back to the first one
+  const pickLevelForAge = (levelList: Level[]): Level => {
+    const hint = user?.age_group ? AGE_GROUP_LEVEL_HINT[user.age_group] : null;
+    if (hint) {
+      const match = levelList.find((l) => l.name.toLowerCase().includes(hint.toLowerCase()));
+      if (match) return match;
+    }
+    return levelList[0];
+  };
+
   useEffect(() => {
     setLoading(true);
     apiRequest<Level[]>('/api/content/levels/')
       .then((res) => {
-        if (res && res.length > 0) {
-          setLevels(res);
-          setSelectedLevel(res[0]);
-          loadSubjectsForLevel(res[0].id);
-        } else {
-          setLevels(FALLBACK_LEVELS);
-          setSelectedLevel(FALLBACK_LEVELS[2]);
-          loadSubjectsForLevel(FALLBACK_LEVELS[2].id);
-        }
+        const list = res && res.length > 0 ? res : FALLBACK_LEVELS;
+        const chosen = pickLevelForAge(list);
+        setLevels(list);
+        setSelectedLevel(chosen);
+        loadSubjectsForLevel(chosen.id);
       })
       .catch(() => {
+        const chosen = pickLevelForAge(FALLBACK_LEVELS);
         setLevels(FALLBACK_LEVELS);
-        setSelectedLevel(FALLBACK_LEVELS[2]);
-        loadSubjectsForLevel(FALLBACK_LEVELS[2].id);
+        setSelectedLevel(chosen);
+        loadSubjectsForLevel(chosen.id);
       })
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.age_group]);
 
   // Load subjects for a level
   const loadSubjectsForLevel = async (levelId: number) => {
@@ -292,34 +314,28 @@ export default function KidLearnPage() {
     }
   };
 
-  // Load videos for a topic
-  const loadVideosForTopic = async (topicId: number) => {
+  // Load videos for a topic using Safe YouTube API
+  const loadVideosForTopic = async (topic: Topic) => {
     setLoading(true);
     try {
-      const res = await apiRequest<Video[]>(`/api/content/videos/?topic=${topicId}`);
+      // First try to fetch curated local videos
+      let res = await apiRequest<Video[]>(`/api/content/videos/?topic=${topic.id}`);
+      
+      if (!res || res.length === 0) {
+        // Fallback to Safe YouTube API if no local curated videos are found
+        const query = encodeURIComponent(topic.title);
+        res = await apiRequest<Video[]>(`/api/learn/videos/?q=${query}`);
+        // ensure IDs are integers for state matching
+        res = res.map((v, i) => ({ ...v, id: topic.id * 1000 + i }));
+      }
+      
       if (res && res.length > 0) {
         setVideos(res);
       } else {
-        setVideos(FALLBACK_VIDEOS[topicId] || [
-          {
-            id: topicId * 100 + 1,
-            topic: topicId,
-            youtube_id: 'libKVRa01L8',
-            title: 'Interactive Focus Lesson',
-            duration_seconds: 240,
-            source_channel: 'FocusPath Approved Channel',
-            age_min: 5,
-            age_max: 14,
-            takeaways: [
-              'Watch actively to discover new connections.',
-              'Pause anytime you need to take notes.',
-              'Earn 10 stars once you complete the video!',
-            ],
-          }
-        ]);
+        setVideos(FALLBACK_VIDEOS[topic.id] || []);
       }
     } catch {
-      setVideos(FALLBACK_VIDEOS[topicId] || []);
+      setVideos(FALLBACK_VIDEOS[topic.id] || []);
     } finally {
       setLoading(false);
     }
@@ -349,7 +365,7 @@ export default function KidLearnPage() {
   const handleSelectTopic = (top: Topic) => {
     setSelectedTopic(top);
     setSelectedVideo(null);
-    loadVideosForTopic(top.id);
+    loadVideosForTopic(top);
   };
 
   // Video Selection Handler
@@ -402,6 +418,19 @@ export default function KidLearnPage() {
         (t.summary && t.summary.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [topics, searchQuery]);
+
+  // Global Search Handler
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      const mockTopic: Topic = { 
+        id: 9999, 
+        subject: selectedSubject?.id || 0, 
+        title: searchQuery.trim(), 
+        summary: `Search results for "${searchQuery.trim()}"` 
+      };
+      handleSelectTopic(mockTopic);
+    }
+  };
 
   return (
     <KidLayout starsCount={stars}>
@@ -465,7 +494,8 @@ export default function KidLearnPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search topics..."
+                    onKeyDown={handleSearchSubmit}
+                    placeholder="Search topics (Press Enter)..."
                     className="pl-9 pr-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-primary focus:bg-white dark:focus:bg-slate-850 transition-all w-48"
                   />
                 </div>
@@ -517,10 +547,13 @@ export default function KidLearnPage() {
                   {/* Player Frame */}
                   <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-900 shadow-sm">
                     <SafeYouTubePlayer
-                      youtubeId={selectedVideo.youtube_id}
+                      youtubeId={selectedVideo.youtube_id || selectedVideo.video_id || ''}
                       onComplete={handleVideoCompleted}
                     />
                   </div>
+                  
+                  {/* Notebook LM Style AI Companion */}
+                  <VideoCompanion videoId={selectedVideo.youtube_id || selectedVideo.video_id || ''} />
 
                   {/* Video Meta Info */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
@@ -539,7 +572,7 @@ export default function KidLearnPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold py-1.5 px-3 rounded-full flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{Math.floor(selectedVideo.duration_seconds / 60)} mins</span>
+                        <span>{Math.floor((selectedVideo.duration_seconds || 300) / 60)} mins</span>
                       </span>
 
                       {completedVideos.includes(selectedVideo.id) ? (
@@ -662,6 +695,57 @@ export default function KidLearnPage() {
 
                 </div>
               ) : null}
+
+              {/* VIEW B.5: Dedicated Global YouTube Search Card (Always shown alongside Subjects) */}
+              {!selectedSubject && !selectedVideo && (
+                <div className="rounded-[32px] border border-slate-200 dark:border-slate-800 bg-gradient-to-r from-primary/10 to-violet-500/10 p-6 sm:p-8 shadow-sm space-y-5 relative overflow-hidden">
+                  
+                  <div className="absolute -right-10 -top-10 opacity-20 hidden sm:block">
+                    <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor" className="text-primary">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+                    </svg>
+                  </div>
+
+                  <div className="relative z-10 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-sm">
+                        <Search className="h-4 w-4" />
+                      </div>
+                      <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                        Safe YouTube Search
+                      </h2>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 max-w-xl">
+                      Looking for something specific? Type any topic below to instantly find curated, distraction-free educational videos.
+                    </p>
+                  </div>
+
+                  <div className="relative z-10 flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Search className="h-5 w-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={handleSearchSubmit}
+                        placeholder="E.g. Photosynthesis, Dinosaurs, Coding for Kids..."
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (searchQuery.trim()) {
+                          handleSearchSubmit({ key: 'Enter' } as React.KeyboardEvent<HTMLInputElement>);
+                        }
+                      }}
+                      className="bg-primary hover:bg-primary/90 text-white font-bold text-sm py-3.5 px-8 rounded-2xl shadow-sm transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
+                    >
+                      <span>Find Videos</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* VIEW B: Subject Selection Grid (When no subject is picked) */}
               {!selectedSubject && !selectedVideo && (
@@ -815,7 +899,7 @@ export default function KidLearnPage() {
                             {/* Video Thumbnail placeholder / safe badge */}
                             <div className="relative aspect-video rounded-2xl bg-slate-900/90 overflow-hidden flex items-center justify-center group-hover:scale-[1.01] transition-transform">
                               <img
-                                src={`https://img.youtube.com/vi/${vid.youtube_id}/mqdefault.jpg`}
+                                src={vid.thumbnail_url || `https://img.youtube.com/vi/${vid.youtube_id || vid.video_id}/mqdefault.jpg`}
                                 alt={vid.title}
                                 className="w-full h-full object-cover opacity-85"
                                 onError={(e) => {
@@ -823,13 +907,13 @@ export default function KidLearnPage() {
                                 }}
                               />
                               <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
-                                <div className="w-12 h-12 rounded-full bg-white/90 text-primary flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                                <div className="w-12 h-12 rounded-full bg-white/90 text-primary flex items-center justify-center shadow-md group-hover:scale-125 transition-transform animate-kid-bob">
                                   <Play className="h-5 w-5 fill-primary ml-0.5" />
                                 </div>
                               </div>
 
                               <span className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold py-0.5 px-2 rounded-md">
-                                {Math.floor(vid.duration_seconds / 60)}m
+                                {Math.floor((vid.duration_seconds || 300) / 60)}m
                               </span>
                             </div>
 
@@ -838,7 +922,7 @@ export default function KidLearnPage() {
                                 {vid.title}
                               </h4>
                               <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                                {vid.source_channel}
+                                {vid.source_channel || 'YouTube Kids Education'}
                               </p>
                             </div>
                           </div>

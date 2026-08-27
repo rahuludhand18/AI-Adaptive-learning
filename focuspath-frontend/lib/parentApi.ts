@@ -49,12 +49,21 @@ export interface AwaySession {
   away_seconds: number;
 }
 
+export interface LoginSession {
+  login_at: string;
+  logout_at: string;
+  duration_seconds: number;
+}
+
 export interface ChildActivity {
   child_id: number;
   still_away_since: string | null;
   switches_today: number;
   switches_last_7_days: number;
   sessions: AwaySession[];
+  still_logged_in_since: string | null;
+  logins_last_7_days: number;
+  login_sessions: LoginSession[];
 }
 
 export async function getChildActivity(childId: number): Promise<ChildActivity> {

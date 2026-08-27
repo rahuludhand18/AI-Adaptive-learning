@@ -1,5 +1,20 @@
 import { create } from 'zustand';
-import { Subject, TimeBlock, DailyTask } from '@/services/focusApi';
+import { TimeBlock, DailyTask } from '@/services/focusApi';
+import { Subject } from '@/lib/plannerApi';
+
+export interface UserRoutine {
+  morning_study_start: string | null;
+  morning_study_end: string | null;
+  work_college_start: string | null;
+  work_college_end: string | null;
+  evening_study_start: string | null;
+  evening_study_end: string | null;
+  snack_time_start: string | null;
+  snack_time_end: string | null;
+  dinner_time_start: string | null;
+  dinner_time_end: string | null;
+  default_daily_hours: number;
+}
 
 interface FocusState {
   // Auth & User
@@ -13,11 +28,13 @@ interface FocusState {
   // Onboarding & Subjects
   subjects: Subject[];
   dailyHours: number;
-  addSubject: (subject: Omit<Subject, 'id'>) => void;
-  removeSubject: (id: string) => void;
-  updateSubjectPriority: (id: string, priority: number) => void;
+  setSubjects: (subjects: Subject[]) => void;
   clearSubjects: () => void;
   setDailyHours: (hours: number) => void;
+
+  // Routine
+  userRoutine: UserRoutine | null;
+  setUserRoutine: (routine: UserRoutine | null) => void;
 
   // Timetable
   timetable: TimeBlock[];
@@ -63,20 +80,12 @@ export const useFocusStore = create<FocusState>((set, get) => ({
 
   subjects: [],
   dailyHours: 6,
-  addSubject: (newSub) =>
-    set((state) => ({
-      subjects: [...state.subjects, { ...newSub, id: uid('sub') }],
-    })),
-  removeSubject: (id) =>
-    set((state) => ({
-      subjects: state.subjects.filter((s) => s.id !== id),
-    })),
-  updateSubjectPriority: (id, priority) =>
-    set((state) => ({
-      subjects: state.subjects.map((s) => (s.id === id ? { ...s, priority } : s)),
-    })),
+  setSubjects: (subjects) => set({ subjects }),
   clearSubjects: () => set({ subjects: [] }),
   setDailyHours: (hours) => set({ dailyHours: hours }),
+
+  userRoutine: null,
+  setUserRoutine: (routine) => set({ userRoutine: routine }),
 
   timetable: [],
   updateBlockStatus: (id, status, type) =>

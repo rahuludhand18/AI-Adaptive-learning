@@ -1,36 +1,67 @@
 from django.db import models
-from django.conf import settings
+from django.contrib.auth import get_user_model
 
-class Task(models.Model):
-    class Statuses(models.TextChoices):
-        ACTIVE = 'ACTIVE', 'Active'
-        UPDATED = 'UPDATED', 'Updated'
-        ARCHIVED = 'ARCHIVED', 'Archived'
-        COMPLETED = 'COMPLETED', 'Completed'
+User = get_user_model()
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='tasks'
-    )
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    deadline = models.DateTimeField()
-    priority = models.IntegerField(default=1) # 1 = Low, 2 = Medium, 3 = High
-    status = models.CharField(
-        max_length=15,
-        choices=Statuses.choices,
-        default=Statuses.ACTIVE
-    )
+class Subject(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subjects')
+    name = models.CharField(max_length=255) # e.g., "Artificial Intelligence"
+    color_code = models.CharField(max_length=7, default="#4F46E5") # For UI clinical color mapping
+    target_exam_date = models.DateField(null=True, blank=True)
+    difficulty = models.CharField(max_length=10, default='Medium')
+    plan_type = models.CharField(max_length=20, default='Study') # 'Study' or 'Revision'
+    daily_subject_hours = models.PositiveIntegerField(default=2)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    def delete(self, *args, **kwargs):
-        # Prevent hard delete! Instead, switch to ARCHIVED status.
-        self.status = self.Statuses.ARCHIVED
-        self.save()
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.title} ({self.status}) for {self.user.username}"
+        return f"{self.name} ({self.user.username})"
+
+
+class Module(models.Model):
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='modules')
+    title = models.CharField(max_length=255) # e.g., "Module 1: Intelligent Agents"
+    order_index = models.PositiveIntegerField(default=0) # Ensures Module 1 always stays above Module 2
+
+    class Meta:
+        ordering = ['order_index', 'id']
+
+    def __str__(self):
+        return f"{self.subject.name} - {self.title}"
+
+
+class Topic(models.Model):
+    module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name='topics')
+    name = models.CharField(max_length=255) # e.g., "Concept of Rationality"
+    estimated_hours = models.FloatField(help_text="Hours required to master this topic")
+    is_completed = models.BooleanField(default=False)
+    order_index = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order_index', 'id']
+
+    def __str__(self):
+        return self.name
+
+
+class StudySession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='study_sessions')
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name='sessions')
+    
+    # Scheduling fields
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    
+    # State tracking
+    is_completed = models.BooleanField(default=False)
+    tab_switch_count = models.PositiveIntegerField(default=0) # Tied to your Page Visibility API logic
+    focus_score = models.IntegerField(default=100, help_text="Deducted dynamically if user loses focus")
+
+    class Meta:
+        ordering = ['date', 'start_time']
+
+    def __str__(self):
+        return f"{self.topic.name} | {self.date} [{self.start_time}-{self.end_time}]"

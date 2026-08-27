@@ -19,6 +19,7 @@ export default function ParentAccountPage() {
 
   const [newKidUsername, setNewKidUsername] = useState('');
   const [newKidPassword, setNewKidPassword] = useState('');
+  const [newKidAgeGroup, setNewKidAgeGroup] = useState('4-6');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function ParentAccountPage() {
 
   const handleAddKid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKidUsername.trim() || !newKidPassword.trim()) return;
+    if (!newKidUsername.trim()) return;
 
     setLoading(true);
     setSuccess(null);
@@ -50,6 +51,7 @@ export default function ParentAccountPage() {
         body: JSON.stringify({
           username: newKidUsername.trim(),
           password: newKidPassword.trim(),
+          age_group: newKidAgeGroup,
         }),
       });
       setSuccess(`Child account "${newKid.username}" created and linked to your Parent account.`);
@@ -57,7 +59,7 @@ export default function ParentAccountPage() {
       setNewKidPassword('');
       fetchKids();
     } catch (err: any) {
-      setError(err.message || 'Failed to create child profile. Username might be already taken or password does not meet security requirements.');
+      setError(err.message || 'Failed to create child profile. Username might be already taken.');
     } finally {
       setLoading(false);
     }
@@ -163,6 +165,26 @@ export default function ParentAccountPage() {
                 required
               />
 
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 px-1">
+                  Age Range
+                </label>
+                <select
+                  value={newKidAgeGroup}
+                  onChange={(e) => setNewKidAgeGroup(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-xs font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="1-3">1–3 years</option>
+                  <option value="4-6">4–6 years</option>
+                  <option value="7-8">7–8 years</option>
+                  <option value="9-10">9–10 years</option>
+                  <option value="11-12">11–12 years</option>
+                </select>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1 px-1">
+                  Only content matching this age range will ever show on their Learn page.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
@@ -201,7 +223,7 @@ export default function ParentAccountPage() {
                       <div>
                         <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{kid.username}</h4>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                          Device: Managed Device
+                          {kid.age_group ? `Age ${kid.age_group}` : 'No age range set'}
                         </p>
                       </div>
                     </div>
