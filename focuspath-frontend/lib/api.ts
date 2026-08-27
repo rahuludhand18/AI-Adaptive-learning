@@ -114,6 +114,7 @@ export async function apiRequest<T = any>(
                 ...restOptions,
               }).then((res) => {
                 if (!res.ok) throw new Error('Retry failed');
+                if (res.status === 204) return null;
                 return res.json();
               });
             })
@@ -176,7 +177,9 @@ export async function apiRequest<T = any>(
               code: errorData.code || null,
             };
           }
-
+          if (retryRes.status === 204) {
+            return null;
+          }
           return retryRes.json();
         } catch (refreshError) {
           processQueue(refreshError, null);
