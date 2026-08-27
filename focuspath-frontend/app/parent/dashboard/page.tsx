@@ -15,6 +15,7 @@ import {
   Shield,
   LogOut,
   AlertCircle,
+  LogIn,
 } from 'lucide-react';
 
 const fmtTime = (iso: string) =>
@@ -265,6 +266,49 @@ export default function ParentDashboardPage() {
           ) : (
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500 text-center py-4">
               No app-switching detected in the last 7 days.
+            </p>
+          )}
+        </div>
+
+        {/* Login Sessions: every time the child signed in and out */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <LogIn className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Login Sessions</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Every time your child signed in and out</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100">{activity?.logins_last_7_days ?? 0}</div>
+              <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">last 7 days</div>
+            </div>
+          </div>
+
+          {activity?.still_logged_in_since && (
+            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-2xl px-4 py-2.5 text-xs font-bold">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Currently signed in — logged in at {fmtTime(activity.still_logged_in_since)}
+            </div>
+          )}
+
+          {activity && activity.login_sessions.length > 0 ? (
+            <div className="max-h-56 overflow-y-auto space-y-2">
+              {activity.login_sessions.map((s, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-800/60 text-xs">
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    Logged in {fmtTime(s.login_at)} → Out {fmtTime(s.logout_at)}
+                  </span>
+                  <span className="font-semibold text-slate-400 dark:text-slate-500">{fmtAway(s.duration_seconds)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 text-center py-4">
+              No completed login sessions in the last 7 days.
             </p>
           )}
         </div>

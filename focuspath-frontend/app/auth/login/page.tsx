@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { apiRequest } from '@/lib/api';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import MorseGate from '@/components/kid/MorseGate';
 import {
   Lock,
   ShieldAlert,
@@ -20,7 +21,9 @@ import {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setAuth } = useAuthStore();
+  const { setAuth, logout } = useAuthStore();
+  // a Kid who just signed in waits here until a parent taps the Morse pattern
+  const [awaitingMorseGate, setAwaitingMorseGate] = useState(false);
 
   // Go straight to the credentials form; the real role comes from the account after login.
   // (URL params below may still switch the header to 'kid' for locked accounts.)
@@ -68,13 +71,14 @@ function LoginContent() {
       // Save to Zustand
       setAuth(res.user, res.access, res.refresh);
 
-      // Redirect depending on user role
+      // Redirect depending on user role — a Kid session doesn't start until a parent
+      // taps the Morse pattern (see MorseGate below)
       if (res.user.role === 'ADULT') {
         router.push('/adult/dashboard');
       } else if (res.user.role === 'PARENT') {
         router.push('/parent/dashboard');
       } else if (res.user.role === 'KID') {
-        router.push('/kid/dashboard');
+        setAwaitingMorseGate(true);
       }
     } catch (err: any) {
       if (err.status === 403 && err.code === 'account_locked') {
@@ -87,6 +91,19 @@ function LoginContent() {
       setLoading(false);
     }
   };
+
+  // Kid signed in with valid credentials — block dashboard access until a parent taps the code
+  if (awaitingMorseGate) {
+    return (
+      <MorseGate
+        onSuccess={() => router.push('/kid/dashboard')}
+        onCancel={() => {
+          logout();
+          setAwaitingMorseGate(false);
+        }}
+      />
+    );
+  }
 
   // If no mode is selected, show the selector screen
   if (loginMode === null) {

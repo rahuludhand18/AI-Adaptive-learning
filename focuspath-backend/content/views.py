@@ -6,7 +6,7 @@ from content.serializers import (
     EducationLevelSerializer, SubjectSerializer, TopicSerializer, VideoSerializer,
     VideoCreateSerializer, MyVideoSerializer,
 )
-from users.models import User
+from users.models import User, AGE_GROUP_BOUNDS
 
 
 # All content endpoints are read-only; adding/approving content happens in the Django
@@ -45,7 +45,15 @@ class VideoListView(generics.ListAPIView):
     def get_queryset(self):
         qs = Video.objects.filter(is_approved=True)  # never expose unapproved videos to a child
         topic = self.request.query_params.get('topic')  # ?topic=<id>
-        return qs.filter(topic_id=topic) if topic else qs
+        if topic:
+            qs = qs.filter(topic_id=topic)
+        # a Kid only ever sees videos whose age range overlaps the bracket their parent assigned —
+        # rule-based on the existing age_min/age_max fields, not a manual grade pick
+        user = self.request.user
+        if user.role == User.Roles.KID and user.age_group in AGE_GROUP_BOUNDS:
+            lo, hi = AGE_GROUP_BOUNDS[user.age_group]
+            qs = qs.filter(age_min__lte=hi, age_max__gte=lo)
+        return qs
 
 
 class IsParentUser(BasePermission):

@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -6,6 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from users.models import User
 from users.serializers import RegisterSerializer, UserSerializer
+from authentication.models import LoginEvent
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -33,6 +34,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 # Deny login and throw exception
                 raise PermissionError("Account locked due to excessive tab switching. Parent approval is required.")
         
+        # Record this successful sign-in so a parent can see exactly when their child logged in
+        LoginEvent.objects.create(user=user, event_type=LoginEvent.EventType.LOGIN)
+
         # Append extra user info to token response
         data['user'] = UserSerializer(user).data
         return data
@@ -65,3 +69,13 @@ class UserProfileView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class LogoutLogView(views.APIView):
+    # JWT is stateless (no server-side session to invalidate) — this endpoint exists purely
+    # so a parent can see exactly when their child signed out, paired with the LOGIN event.
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        LoginEvent.objects.create(user=request.user, event_type=LoginEvent.EventType.LOGOUT)
+        return Response({"detail": "Logged."}, status=status.HTTP_201_CREATED)

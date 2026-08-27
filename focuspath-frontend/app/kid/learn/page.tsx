@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import KidLayout from '@/components/layout/KidLayout';
 import SafeYouTubePlayer from '@/components/kid/SafeYouTubePlayer';
+import { useAuthStore } from '@/store/authStore';
 import { apiRequest } from '@/lib/api';
 import {
   BookOpen,
@@ -198,8 +199,18 @@ function getSubjectIcon(name: string) {
   return <BookOpen className="h-5 w-5 text-primary" />;
 }
 
+// which grade-level name to prefer for each age bracket a parent can assign
+const AGE_GROUP_LEVEL_HINT: Record<string, string> = {
+  '1-3': 'Kindergarten',
+  '4-6': 'Kindergarten',
+  '7-8': 'Grade 1',
+  '9-10': 'Grade 3',
+  '11-12': 'Grade 6',
+};
+
 export default function KidLearnPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
 
   // State for Catalog
   const [levels, setLevels] = useState<Level[]>([]);
@@ -234,27 +245,35 @@ export default function KidLearnPage() {
       .catch(() => {});
   }, []);
 
+  // pick the level whose name best matches the child's age bracket; falls back to the first one
+  const pickLevelForAge = (levelList: Level[]): Level => {
+    const hint = user?.age_group ? AGE_GROUP_LEVEL_HINT[user.age_group] : null;
+    if (hint) {
+      const match = levelList.find((l) => l.name.toLowerCase().includes(hint.toLowerCase()));
+      if (match) return match;
+    }
+    return levelList[0];
+  };
+
   useEffect(() => {
     setLoading(true);
     apiRequest<Level[]>('/api/content/levels/')
       .then((res) => {
-        if (res && res.length > 0) {
-          setLevels(res);
-          setSelectedLevel(res[0]);
-          loadSubjectsForLevel(res[0].id);
-        } else {
-          setLevels(FALLBACK_LEVELS);
-          setSelectedLevel(FALLBACK_LEVELS[2]);
-          loadSubjectsForLevel(FALLBACK_LEVELS[2].id);
-        }
+        const list = res && res.length > 0 ? res : FALLBACK_LEVELS;
+        const chosen = pickLevelForAge(list);
+        setLevels(list);
+        setSelectedLevel(chosen);
+        loadSubjectsForLevel(chosen.id);
       })
       .catch(() => {
+        const chosen = pickLevelForAge(FALLBACK_LEVELS);
         setLevels(FALLBACK_LEVELS);
-        setSelectedLevel(FALLBACK_LEVELS[2]);
-        loadSubjectsForLevel(FALLBACK_LEVELS[2].id);
+        setSelectedLevel(chosen);
+        loadSubjectsForLevel(chosen.id);
       })
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.age_group]);
 
   // Load subjects for a level
   const loadSubjectsForLevel = async (levelId: number) => {
@@ -823,7 +842,7 @@ export default function KidLearnPage() {
                                 }}
                               />
                               <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
-                                <div className="w-12 h-12 rounded-full bg-white/90 text-primary flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                                <div className="w-12 h-12 rounded-full bg-white/90 text-primary flex items-center justify-center shadow-md group-hover:scale-125 transition-transform animate-kid-bob">
                                   <Play className="h-5 w-5 fill-primary ml-0.5" />
                                 </div>
                               </div>
