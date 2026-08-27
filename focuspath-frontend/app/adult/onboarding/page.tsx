@@ -25,6 +25,8 @@ export default function AdultOnboardingPage() {
 
   const [newSubjectName, setNewSubjectName] = useState('');
   const [difficulty, setDifficulty] = useState('Medium');
+  const [planType, setPlanType] = useState<'Study' | 'Revision'>('Study');
+  const [dailySubjectHours, setDailySubjectHours] = useState(2);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isParsingSyllabus, setIsParsingSyllabus] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -49,12 +51,40 @@ export default function AdultOnboardingPage() {
   const [overflowData, setOverflowData] = useState<{ hours: number, message: string } | null>(null);
   const [weekendWarrior, setWeekendWarrior] = useState(false);
 
-  // default target: 30 days from today (YYYY-MM-DD)
   const [finishBy, setFinishBy] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d.toISOString().slice(0, 10);
   });
+
+  // Effect to auto-update daily_subject_hours when difficulty changes
+  useEffect(() => {
+    if (difficulty === 'Easy') setDailySubjectHours(1);
+    else if (difficulty === 'Medium') setDailySubjectHours(2);
+    else if (difficulty === 'Hard') setDailySubjectHours(3);
+  }, [difficulty]);
+
+  // Effect for date validation (Study Mode)
+  useEffect(() => {
+    if (!finishBy) return;
+    const examDate = new Date(finishBy);
+    const today = new Date();
+    const diffTime = Math.abs(examDate.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 60 && planType === 'Study') {
+      setPlanType('Revision');
+    }
+  }, [finishBy, planType]);
+
+  const isStudyDisabled = () => {
+    if (!finishBy) return false;
+    const examDate = new Date(finishBy);
+    const today = new Date();
+    const diffTime = Math.abs(examDate.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays < 60;
+  };
 
   const loadSubjects = async () => {
     try {
@@ -150,9 +180,12 @@ export default function AdultOnboardingPage() {
       for (const sub of subjects) {
         await generateSchedule({
           subject_id: sub.id,
-          daily_hours: dailyHours,
+          daily_hours: dailyHours, // global limit
           weekend_warrior: weekendWarrior,
-          target_exam_date: finishBy
+          target_exam_date: finishBy,
+          plan_type: planType,
+          difficulty: difficulty,
+          daily_subject_hours: dailySubjectHours
         });
       }
       router.push('/adult/planner'); 
@@ -206,17 +239,76 @@ export default function AdultOnboardingPage() {
 
               <div className="pt-2">
                 <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 mb-2">
-                  2. Select Difficulty
+                  2. Plan Type & Difficulty
                 </h2>
+                
+                {/* Segmented Control for Plan Type */}
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-4 relative">
+                  <button
+                    onClick={() => {
+                      if (!isStudyDisabled()) setPlanType('Study');
+                    }}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                      planType === 'Study' 
+                        ? 'bg-white dark:bg-slate-700 text-indigo shadow-sm' 
+                        : isStudyDisabled() 
+                          ? 'text-slate-400 cursor-not-allowed opacity-50' 
+                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                    disabled={isStudyDisabled()}
+                    title={isStudyDisabled() ? "Exam is less than 2 months away. Study Mode disabled." : ""}
+                  >
+                    Study Mode
+                  </button>
+                  <button
+                    onClick={() => setPlanType('Revision')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                      planType === 'Revision' 
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    Revision Mode
+                  </button>
+                </div>
+                
+                {isStudyDisabled() && (
+                  <p className="text-xs text-rose-500 font-semibold mb-4 bg-rose-50 p-2 rounded-lg">
+                    ⚠️ Exam is less than 2 months away. Study Mode disabled.
+                  </p>
+                )}
+
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium mb-4"
                 >
                   <option value="Easy">Easy (Fewer hours)</option>
                   <option value="Medium">Medium (Standard hours)</option>
                   <option value="Hard">Hard (More hours)</option>
                 </select>
+
+                {/* Stepper for Daily Subject Hours */}
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                  <span className="text-sm font-bold text-textPrimary dark:text-slate-200">
+                    Daily Hours for this Subject
+                  </span>
+                  <div className="flex items-center space-x-3">
+                    <button 
+                      onClick={() => setDailySubjectHours(Math.max(1, dailySubjectHours - 1))}
+                      className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition-colors"
+                    >
+                      -
+                    </button>
+                    <span className="text-base font-bold w-4 text-center">{dailySubjectHours}</span>
+                    <button 
+                      onClick={() => setDailySubjectHours(Math.min(12, dailySubjectHours + 1))}
+                      className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2">

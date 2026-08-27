@@ -38,6 +38,7 @@ export interface StudySession {
   is_completed: boolean;
   tab_switch_count: number;
   focus_score: number;
+  plan_type?: string;
 }
 
 // "HH:MM AM/PM" (12h) formatter for the UI timeRange.
@@ -74,6 +75,7 @@ export function sessionToTimeBlock(session: StudySession): TimeBlock {
     type: status === 'completed' ? 'completed' : status === 'active' ? 'active' : 'default',
     dayIndex: (startDt.getDay() + 6) % 7, // Mon=0 .. Sun=6
     dateKey: session.date,
+    plan_type: session.plan_type,
   };
 }
 

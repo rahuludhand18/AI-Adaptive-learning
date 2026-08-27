@@ -290,6 +290,15 @@ export default function AdultPlannerPage() {
                 {block.moduleTitle}
               </span>
             )}
+            {block.plan_type && (
+              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                block.plan_type.toLowerCase() === 'study' 
+                  ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' 
+                  : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800'
+              }`}>
+                {block.plan_type}
+              </span>
+            )}
           </div>
           <p className="text-xs text-textSecondary dark:text-slate-400 truncate mt-0.5 font-medium">{block.subtitle}</p>
         </div>

@@ -237,6 +237,15 @@ export default function AdultDashboardPage() {
                                   {block.moduleTitle}
                                 </span>
                               )}
+                              {block.plan_type && (
+                                <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                                  block.plan_type.toLowerCase() === 'study' 
+                                    ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' 
+                                    : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800'
+                                }`}>
+                                  {block.plan_type}
+                                </span>
+                              )}
                             </div>
                             <p className="text-[11px] text-textSecondary dark:text-slate-400 line-clamp-1 mt-0.5 font-medium">{block.subtitle}</p>
                             <p className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">{block.timeRange}</p>

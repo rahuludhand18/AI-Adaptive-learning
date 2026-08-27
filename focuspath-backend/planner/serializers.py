@@ -23,6 +23,7 @@ class StudySessionSerializer(serializers.ModelSerializer):
     module_title = serializers.CharField(source='topic.module.title', read_only=True)
     subject_name = serializers.CharField(source='topic.module.subject.name', read_only=True)
     subject_color = serializers.CharField(source='topic.module.subject.color_code', read_only=True)
+    plan_type = serializers.CharField(source='topic.module.subject.plan_type', read_only=True)
     
     class Meta:
         model = StudySession

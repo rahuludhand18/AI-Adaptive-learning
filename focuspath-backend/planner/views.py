@@ -77,7 +77,13 @@ class GenerateScheduleView(views.APIView):
             subject = Subject.objects.get(id=subject_id, user=request.user)
             if target_date_str:
                 subject.target_exam_date = datetime.datetime.strptime(target_date_str, '%Y-%m-%d').date()
-                subject.save()
+            if 'plan_type' in request.data:
+                subject.plan_type = request.data['plan_type']
+            if 'difficulty' in request.data:
+                subject.difficulty = request.data['difficulty']
+            if 'daily_subject_hours' in request.data:
+                subject.daily_subject_hours = int(request.data['daily_subject_hours'])
+            subject.save()
             
             user_routine = UserRoutine.objects.filter(user=request.user).first()
             if not user_routine:
