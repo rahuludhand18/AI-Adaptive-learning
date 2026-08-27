@@ -73,9 +73,10 @@ export async function apiRequest<T = any>(
     url += `?${searchParams.toString()}`;
   }
 
-  const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const defaultHeaders: Record<string, string> = {};
+  if (!(restOptions.body instanceof FormData)) {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
 
   // Attach token if exists
   if (typeof window !== 'undefined') {
@@ -113,6 +114,7 @@ export async function apiRequest<T = any>(
                 ...restOptions,
               }).then((res) => {
                 if (!res.ok) throw new Error('Retry failed');
+                if (res.status === 204) return null;
                 return res.json();
               });
             })
@@ -175,7 +177,9 @@ export async function apiRequest<T = any>(
               code: errorData.code || null,
             };
           }
-
+          if (retryRes.status === 204) {
+            return null;
+          }
           return retryRes.json();
         } catch (refreshError) {
           processQueue(refreshError, null);
@@ -209,6 +213,10 @@ export async function apiRequest<T = any>(
       code: errorData.code || null,
       errors: errorData,
     };
+  }
+
+  if (response.status === 204) {
+    return null as any;
   }
 
   return response.json();

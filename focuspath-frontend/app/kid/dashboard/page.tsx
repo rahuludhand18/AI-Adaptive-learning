@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import KidLayout from '@/components/layout/KidLayout';
+import SafeLink from '@/components/kid/SafeLink';
 import { apiRequest } from '@/lib/api';
 import {
   BookOpen,
@@ -711,6 +712,52 @@ export default function KidDashboardPage() {
               </div>
             </div>
 
+          </div>
+
+          {/* 5. Safe Web Links (Walled Garden) */}
+          <div className="rounded-[32px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70 dark:text-primary">
+                  Walled Garden
+                </span>
+                <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/50 text-xs font-semibold py-1 px-3 rounded-full flex items-center gap-1.5 shadow-sm">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span>Safe Browsing</span>
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                Explore Approved Websites
+              </h3>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <SafeLink 
+                href="https://www.wikipedia.org"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-3 px-5 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-primary/50 hover:bg-primary/5 transition-all"
+              >
+                Wikipedia
+              </SafeLink>
+              <SafeLink 
+                href="https://www.khanacademy.org"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-3 px-5 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-primary/50 hover:bg-primary/5 transition-all"
+              >
+                Khan Academy
+              </SafeLink>
+              <SafeLink 
+                href="https://www.coursera.org"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-3 px-5 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-primary/50 hover:bg-primary/5 transition-all"
+              >
+                Coursera
+              </SafeLink>
+              {/* Intentional bad link to test the Walled Garden block */}
+              <SafeLink 
+                href="https://www.reddit.com"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-3 px-5 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-primary/50 hover:bg-primary/5 transition-all"
+              >
+                Reddit (Blocked)
+              </SafeLink>
+            </div>
           </div>
 
         </div>

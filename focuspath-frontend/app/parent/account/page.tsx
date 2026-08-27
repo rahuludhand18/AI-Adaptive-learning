@@ -40,7 +40,7 @@ export default function ParentAccountPage() {
 
   const handleAddKid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKidUsername.trim() || !newKidPassword.trim()) return;
+    if (!newKidUsername.trim()) return;
 
     setLoading(true);
     setSuccess(null);
@@ -59,7 +59,7 @@ export default function ParentAccountPage() {
       setNewKidPassword('');
       fetchKids();
     } catch (err: any) {
-      setError(err.message || 'Failed to create child profile. Username might be already taken or password does not meet security requirements.');
+      setError(err.message || 'Failed to create child profile. Username might be already taken.');
     } finally {
       setLoading(false);
     }

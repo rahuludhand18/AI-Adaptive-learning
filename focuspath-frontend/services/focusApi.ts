@@ -17,6 +17,8 @@ export interface TimeBlock {
   dayIndex: number; // 0=Mon, 6=Sun
   dateKey?: string; // actual calendar date 'YYYY-MM-DD' (distinguishes the same weekday across weeks)
   subjectId?: string;
+  moduleTitle?: string;
+  plan_type?: string;
 }
 
 export interface DailyTask {

@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from users.models import User, ParentChildRelation
+from users.models import User, ParentChildRelation, UserRoutine
+
+class UserRoutineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserRoutine
+        exclude = ('id', 'user')
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { generateSchedule, parseSyllabusFile, clearSchedule } from '@/lib/plannerApi';
+import React, { useState, useEffect } from 'react';
+import { generateSchedule, uploadSyllabus, clearSchedule, listSubjects, deleteSubject, Subject, fetchUserRoutine, saveUserRoutine } from '@/lib/plannerApi';
 import { useRouter } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -11,75 +11,135 @@ import {
   UploadCloud,
   Plus,
   Trash2,
-  Star,
-  Sparkles,
   BookOpen,
-  Sigma,
-  Microscope,
-  Calendar,
   CheckCircle2,
   FileText,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 export default function AdultOnboardingPage() {
   const router = useRouter();
-  const { subjects, addSubject, removeSubject, updateSubjectPriority, clearSubjects, dailyHours, setDailyHours } = useFocusStore();
-
-  // delete the whole syllabus: clear planned subjects AND archive the generated timetable
-  const handleDeleteSyllabus = async () => {
-    clearSubjects();
-    setUploadedFileName(null);
-    try {
-      await clearSchedule();
-    } catch {
-      // ignore; subjects are cleared locally regardless
-    }
-  };
+  const { subjects, setSubjects, clearSubjects, dailyHours, setDailyHours, userRoutine, setUserRoutine } = useFocusStore();
 
   const [newSubjectName, setNewSubjectName] = useState('');
-  const [newPriority, setNewPriority] = useState<number>(4);
+  const [difficulty, setDifficulty] = useState('Medium');
+  const [planType, setPlanType] = useState<'Study' | 'Revision'>('Study');
+  const [dailySubjectHours, setDailySubjectHours] = useState(2);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isParsingSyllabus, setIsParsingSyllabus] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  // default target: 30 days from today (YYYY-MM-DD)
+  
+  // Accordion state
+  const [expandedSubjectId, setExpandedSubjectId] = useState<number | null>(null);
+
+  const [routine, setRoutine] = useState({
+    morning_study_start: '07:00',
+    morning_study_end: '09:00',
+    work_college_start: '10:00',
+    work_college_end: '16:00',
+    evening_study_start: '17:00',
+    evening_study_end: '20:00',
+    snack_time_start: '16:00',
+    snack_time_end: '16:30',
+    dinner_time_start: '20:00',
+    dinner_time_end: '21:00',
+  });
+
+  const [overflowData, setOverflowData] = useState<{ hours: number, message: string } | null>(null);
+  const [weekendWarrior, setWeekendWarrior] = useState(false);
+
   const [finishBy, setFinishBy] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d.toISOString().slice(0, 10);
   });
 
-  // readable form of the shared "finish syllabus by" target (e.g. "Sep 22, 2026")
-  const finishByLabel = (() => {
-    const [y, m, d] = finishBy.split('-').map(Number);
-    if (!y || !m || !d) return '—';
-    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  })();
+  // Effect to auto-update daily_subject_hours when difficulty changes
+  useEffect(() => {
+    if (difficulty === 'Easy') setDailySubjectHours(1);
+    else if (difficulty === 'Medium') setDailySubjectHours(2);
+    else if (difficulty === 'Hard') setDailySubjectHours(3);
+  }, [difficulty]);
 
-  const handleAddSubject = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSubjectName.trim()) return;
-    addSubject({
-      name: newSubjectName.trim(),
-      priority: newPriority,
-      deadline: '',
-      icon: 'BookOpen',
-    });
-    setNewSubjectName('');
+  // Effect for date validation (Study Mode)
+  useEffect(() => {
+    if (!finishBy) return;
+    const examDate = new Date(finishBy);
+    const today = new Date();
+    const diffTime = Math.abs(examDate.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 60 && planType === 'Study') {
+      setPlanType('Revision');
+    }
+  }, [finishBy, planType]);
+
+  const isStudyDisabled = () => {
+    if (!finishBy) return false;
+    const examDate = new Date(finishBy);
+    const today = new Date();
+    const diffTime = Math.abs(examDate.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays < 60;
+  };
+
+  const loadSubjects = async () => {
+    try {
+      const data = await listSubjects();
+      setSubjects(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadRoutine = async () => {
+    try {
+      const routineData = await fetchUserRoutine();
+      if (routineData && routineData.morning_study_start) {
+        setUserRoutine(routineData);
+        setDailyHours(routineData.default_daily_hours || 2);
+      }
+    } catch (e) {
+      console.log('No global routine found or error fetching.');
+    }
+  };
+
+  useEffect(() => {
+    loadSubjects();
+    if (!userRoutine) {
+      loadRoutine();
+    }
+  }, []);
+
+  const handleDeleteSingleSubject = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation(); // prevent accordion from expanding
+    try {
+      await deleteSubject(id);
+      const updated = await listSubjects();
+      setSubjects(updated);
+      useFocusStore.getState().setSubjects(updated);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete subject');
+    }
   };
 
   const processSyllabusFile = async (file: File) => {
+    if (!newSubjectName.trim()) {
+      alert("Please type a Subject Name before uploading the syllabus.");
+      return;
+    }
     setUploadedFileName(file.name);
     setIsParsingSyllabus(true);
     try {
-      // server extracts subjects from .txt or .pdf
-      const subjects = await parseSyllabusFile(file);
-      // priority starts unrated (0) — the user sets difficulty by clicking the stars.
-      // topics extracted from the syllabus are kept so each block can cover specific content.
-      subjects.forEach((s) => addSubject({ name: s.name, priority: 0, deadline: '', icon: 'BookOpen', topics: s.topics || [] }));
-    } catch {
-      // ignore; user can still add subjects manually
+      await uploadSyllabus(file, newSubjectName.trim(), difficulty);
+      setNewSubjectName('');
+      await loadSubjects();
+    } catch (e: any) {
+      alert(e.message || "Upload failed");
     } finally {
       setIsParsingSyllabus(false);
     }
@@ -105,30 +165,41 @@ export default function AdultOnboardingPage() {
       return;
     }
     setIsGenerating(true);
+    setOverflowData(null);
     try {
-      // build a real timetable from subjects (priority = difficulty) + finish date + hours/day
-      await generateSchedule(
-        // unrated subjects (priority 0) default to medium difficulty (3) for balanced scheduling
-        subjects.map((s) => ({ name: s.name, difficulty: s.priority || 3, topics: s.topics || [] })),
-        dailyHours,
-        finishBy,
-      );
-      router.push('/adult/planner'); // show the generated schedule
-    } catch {
-      router.push('/adult/dashboard'); // still proceed if generation failed
+      // If no global routine exists yet, save it first
+      if (!userRoutine) {
+        const newRoutine = await saveUserRoutine({
+          ...routine,
+          default_daily_hours: dailyHours
+        });
+        setUserRoutine(newRoutine);
+      }
+
+      // For each subject, generate its timetable
+      for (const sub of subjects) {
+        await generateSchedule({
+          subject_id: sub.id,
+          daily_hours: dailyHours, // global limit
+          weekend_warrior: weekendWarrior,
+          target_exam_date: finishBy,
+          plan_type: planType,
+          difficulty: difficulty,
+          daily_subject_hours: dailySubjectHours
+        });
+      }
+      router.push('/adult/planner'); 
+    } catch (err: any) {
+      if (err.errors?.status === 'overflow' || err.status === 'overflow') {
+         setOverflowData({ 
+           hours: err.errors?.unallocated_hours || err.unallocated_hours || 0, 
+           message: err.message 
+         });
+      } else {
+         alert(err.message || 'Generation failed');
+      }
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const getSubjectIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'Sigma':
-        return <Sigma className="w-5 h-5 text-indigo dark:text-indigo-400" />;
-      case 'Microscope':
-        return <Microscope className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
-      default:
-        return <BookOpen className="w-5 h-5 text-teal dark:text-teal-400" />;
     }
   };
 
@@ -139,289 +210,458 @@ export default function AdultOnboardingPage() {
       <PageContainer>
         {/* Header Title */}
         <div className="space-y-1 mb-2">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-textPrimary dark:text-slate-100 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold text-textPrimary dark:text-slate-100 tracking-tight">
             {COPY.onboarding.heading}
           </h1>
-          <p className="text-sm text-textSecondary dark:text-slate-400 font-normal">
+          <p className="text-sm text-textSecondary dark:text-slate-400 font-medium">
             {COPY.onboarding.subheading}
           </p>
         </div>
 
-        {/* Main Grid: Upload & Add Left / Planned Subjects Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
           
           {/* Left Column (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
             
-            {/* Syllabus Upload Card with Drag & Drop */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragOver(true);
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleDrop}
-              className={`bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 transition-all shadow-card flex flex-col items-center text-center ${
-                isDragOver ? 'border-indigo bg-indigo-light/20 scale-[1.01]' : 'border-border dark:border-slate-800'
-              }`}
-            >
-              <div className="w-12 h-12 rounded-2xl bg-indigo-light dark:bg-indigo-950/50 text-indigo dark:text-indigo-400 flex items-center justify-center mb-3 shadow-sm border border-indigo-100 dark:border-indigo-900/40">
-                <UploadCloud className="w-6 h-6" />
-              </div>
-
+            {/* Subject Name Input + Upload */}
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <h2 className="text-base font-bold text-textPrimary dark:text-slate-100">
-                {COPY.onboarding.uploadTitle}
+                1. Name Your Subject
               </h2>
-              <p className="text-xs text-textSecondary dark:text-slate-400 mt-1 max-w-xs">
-                {COPY.onboarding.uploadSubtitle}
-              </p>
+              <input
+                type="text"
+                placeholder="e.g. Cognitive Psychology"
+                value={newSubjectName}
+                onChange={(e) => setNewSubjectName(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium"
+              />
 
-              {/* Format badges */}
-              <div className="flex items-center space-x-2 my-3">
-                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.pdf</span>
-                <span className="text-[11px] font-semibold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">.txt</span>
-              </div>
-
-              {/* Upload Input & Button */}
-              <label className="cursor-pointer py-2.5 px-6 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-md active:scale-95 inline-flex items-center space-x-2">
-                <input
-                  type="file"
-                  accept=".txt,.pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <FileText className="w-4 h-4" />
-                <span>{uploadedFileName ? `Re-upload File` : COPY.onboarding.browseFiles}</span>
-              </label>
-
-              {/* AI Extraction Status Indicator */}
-              {isParsingSyllabus ? (
-                <div className="mt-4 flex items-center space-x-2 text-xs text-indigo dark:text-indigo-400 font-bold bg-indigo-light/60 dark:bg-indigo-950/50 py-2 px-4 rounded-xl animate-pulse">
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo" />
-                  <span>Extracting subjects & exam deadlines with AI...</span>
-                </div>
-              ) : uploadedFileName ? (
-                <div className="mt-4 flex flex-col items-center space-y-1">
-                  <div className="flex items-center space-x-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/50 py-1.5 px-3 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>{uploadedFileName} parsed successfully!</span>
-                  </div>
-                  <span className="text-[10px] text-textSecondary dark:text-slate-400">Extracted course milestones into Planned Subjects</span>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Add Subjects Manually Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card space-y-4">
-              <h3 className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider">
-                {COPY.onboarding.addManually}
-              </h3>
-
-              <form onSubmit={handleAddSubject} className="space-y-3">
-                <input
-                  type="text"
-                  placeholder={COPY.onboarding.subjectPlaceholder}
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-indigo-light/30 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo transition-all font-medium"
-                />
-
-                <div className="flex items-center space-x-3">
-                  <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(Number(e.target.value))}
-                    className="flex-1 px-3.5 py-2.5 bg-indigo-light/30 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs font-semibold text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo transition-all cursor-pointer"
-                  >
-                    <option value={5} className="dark:bg-slate-900">Priority 5 (High)</option>
-                    <option value={4} className="dark:bg-slate-900">Priority 4 (Medium-High)</option>
-                    <option value={3} className="dark:bg-slate-900">Priority 3 (Medium)</option>
-                    <option value={2} className="dark:bg-slate-900">Priority 2 (Normal)</option>
-                    <option value={1} className="dark:bg-slate-900">Priority 1 (Low)</option>
-                  </select>
-
+              <div className="pt-2">
+                <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 mb-2">
+                  2. Plan Type & Difficulty
+                </h2>
+                
+                {/* Segmented Control for Plan Type */}
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-4 relative">
                   <button
-                    type="submit"
-                    className="py-2.5 px-5 bg-teal text-white font-bold text-xs rounded-xl hover:bg-teal-600 transition-all shadow-md flex items-center space-x-1.5 shrink-0 cursor-pointer"
+                    onClick={() => {
+                      if (!isStudyDisabled()) setPlanType('Study');
+                    }}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                      planType === 'Study' 
+                        ? 'bg-white dark:bg-slate-700 text-indigo shadow-sm' 
+                        : isStudyDisabled() 
+                          ? 'text-slate-400 cursor-not-allowed opacity-50' 
+                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                    disabled={isStudyDisabled()}
+                    title={isStudyDisabled() ? "Exam is less than 2 months away. Study Mode disabled." : ""}
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>Add</span>
+                    Study Mode
+                  </button>
+                  <button
+                    onClick={() => setPlanType('Revision')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                      planType === 'Revision' 
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    Revision Mode
                   </button>
                 </div>
-              </form>
-            </div>
+                
+                {isStudyDisabled() && (
+                  <p className="text-xs text-rose-500 font-semibold mb-4 bg-rose-50 p-2 rounded-lg">
+                    ⚠️ Exam is less than 2 months away. Study Mode disabled.
+                  </p>
+                )}
 
-          </div>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium mb-4"
+                >
+                  <option value="Easy">Easy (Fewer hours)</option>
+                  <option value="Medium">Medium (Standard hours)</option>
+                  <option value="Hard">Hard (More hours)</option>
+                </select>
 
-          {/* Right Column: Planned Subjects List (7 cols) */}
-          <div className="lg:col-span-7">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card h-full flex flex-col justify-between">
-              
-              <div>
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/60 dark:border-slate-800">
-                  <h2 className="text-base font-bold text-textPrimary dark:text-slate-100">
-                    {COPY.onboarding.plannedTitle}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-extrabold bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/40">
-                      {subjects.length} Added
-                    </span>
-                    {subjects.length > 0 && (
-                      <button
-                        onClick={handleDeleteSyllabus}
-                        title="Delete syllabus and clear the generated timetable"
-                        className="flex items-center gap-1 text-xs font-bold text-danger dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-900/40 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete Syllabus
-                      </button>
-                    )}
+                {/* Stepper for Daily Subject Hours */}
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                  <span className="text-sm font-bold text-textPrimary dark:text-slate-200">
+                    Daily Hours for this Subject
+                  </span>
+                  <div className="flex items-center space-x-3">
+                    <button 
+                      onClick={() => setDailySubjectHours(Math.max(1, dailySubjectHours - 1))}
+                      className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition-colors"
+                    >
+                      -
+                    </button>
+                    <span className="text-base font-bold w-4 text-center">{dailySubjectHours}</span>
+                    <button 
+                      onClick={() => setDailySubjectHours(Math.min(12, dailySubjectHours + 1))}
+                      className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition-colors"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
+              </div>
 
-                {/* Subjects List Rows */}
-                <div className="space-y-3">
-                  {subjects.map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="p-4 rounded-xl border border-border/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800/80 hover:shadow-sm transition-all flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-border dark:border-slate-700 flex items-center justify-center shadow-sm">
-                          {getSubjectIcon(sub.icon)}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-textPrimary dark:text-slate-100">{sub.name}</h4>
-                          {/* Clickable difficulty stars — the student sets this, it is not guessed */}
-                          <div className="flex items-center space-x-1 mt-0.5">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => updateSubjectPriority(sub.id, star)}
-                                title={`Set difficulty to ${star}`}
-                                className="cursor-pointer hover:scale-110 transition-transform"
-                              >
-                                <Star
-                                  className={`w-3.5 h-3.5 ${
-                                    star <= sub.priority
-                                      ? 'text-amber-400 fill-amber-400'
-                                      : 'text-slate-200 dark:text-slate-700'
-                                  }`}
-                                />
-                              </button>
-                            ))}
-                            {sub.priority === 0 && (
-                              <span className="text-[10px] text-textSecondary dark:text-slate-500 ml-1">Rate difficulty</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+              <div className="pt-2">
+                <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 mb-2">
+                  3. Upload Syllabus PDF
+                </h2>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-2xl p-6 transition-all flex flex-col items-center text-center ${
+                    isDragOver ? 'border-indigo bg-indigo/5 scale-[1.02]' : 'border-slate-300 dark:border-slate-700'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-full bg-indigo/10 text-indigo flex items-center justify-center mb-3">
+                    <UploadCloud className="w-6 h-6" />
+                  </div>
+                  
+                  <p className="text-sm font-medium text-textSecondary dark:text-slate-400 max-w-xs mb-4">
+                    Drag your PDF here or click below to upload. The AI will extract modules.
+                  </p>
 
-                      {/* Deadline Date & Delete */}
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-1.5 text-xs text-textSecondary dark:text-slate-400 bg-white dark:bg-slate-800 py-1.5 px-2.5 rounded-lg border border-border dark:border-slate-700">
-                          <span className="text-[10px] font-bold uppercase text-textSecondary dark:text-slate-400">FINISH BY</span>
-                          <span className="font-semibold text-textPrimary dark:text-slate-200">{finishByLabel}</span>
-                          <Calendar className="w-3.5 h-3.5 text-textSecondary ml-1" />
-                        </div>
-                        <button
-                          onClick={() => removeSubject(sub.id)}
-                          className="p-2 text-textSecondary dark:text-slate-400 hover:text-danger dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                  <label className="cursor-pointer py-2.5 px-6 bg-indigo text-white font-semibold text-sm rounded-xl hover:bg-indigo-dark transition-all shadow-sm active:scale-95 inline-flex items-center space-x-2">
+                    <input
+                      type="file"
+                      accept=".txt,.pdf"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={isParsingSyllabus}
+                    />
+                    <FileText className="w-4 h-4" />
+                    <span>{isParsingSyllabus ? "Extracting..." : "Upload & Parse"}</span>
+                  </label>
+                  
+                  {isParsingSyllabus && (
+                    <div className="mt-4 flex items-center space-x-2 text-xs font-semibold text-indigo animate-pulse">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>AI is extracting modules & topics...</span>
                     </div>
-                  ))}
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Timetable Details */}
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 flex items-center justify-between">
+                <span>4. Configure Availability</span>
+                {userRoutine && (
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full uppercase tracking-wider">
+                    ✅ Global Routine Applied
+                  </span>
+                )}
+              </h2>
+              
+              {!userRoutine ? (
+                <div className="space-y-4">
+                  {/* Morning Study */}
+                  <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="col-span-2 text-xs font-bold text-indigo">Morning Study Window</div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Start</label>
+                      <input
+                        type="time"
+                        value={routine.morning_study_start}
+                        onChange={(e) => setRoutine({ ...routine, morning_study_start: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">End</label>
+                      <input
+                        type="time"
+                        value={routine.morning_study_end}
+                        onChange={(e) => setRoutine({ ...routine, morning_study_end: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Evening Study */}
+                  <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="col-span-2 text-xs font-bold text-indigo">Evening Study Window</div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Start</label>
+                      <input
+                        type="time"
+                        value={routine.evening_study_start}
+                        onChange={(e) => setRoutine({ ...routine, evening_study_start: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">End</label>
+                      <input
+                        type="time"
+                        value={routine.evening_study_end}
+                        onChange={(e) => setRoutine({ ...routine, evening_study_end: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Visual Blocks (Work, Snack, Dinner) */}
+                  <div className="grid grid-cols-2 gap-4 bg-rose-50/50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                    <div className="col-span-2 text-xs font-bold text-rose-600 dark:text-rose-400">Blocked Times (No Study)</div>
+                    
+                    {/* Work/College */}
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Work/College Start</label>
+                      <input
+                        type="time"
+                        value={routine.work_college_start}
+                        onChange={(e) => setRoutine({ ...routine, work_college_start: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Work/College End</label>
+                      <input
+                        type="time"
+                        value={routine.work_college_end}
+                        onChange={(e) => setRoutine({ ...routine, work_college_end: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+
+                    {/* Meals */}
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Snack Start</label>
+                      <input
+                        type="time"
+                        value={routine.snack_time_start}
+                        onChange={(e) => setRoutine({ ...routine, snack_time_start: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Snack End</label>
+                      <input
+                        type="time"
+                        value={routine.snack_time_end}
+                        onChange={(e) => setRoutine({ ...routine, snack_time_end: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Dinner Start</label>
+                      <input
+                        type="time"
+                        value={routine.dinner_time_start}
+                        onChange={(e) => setRoutine({ ...routine, dinner_time_start: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-textSecondary mb-1 uppercase tracking-wider">Dinner End</label>
+                      <input
+                        type="time"
+                        value={routine.dinner_time_end}
+                        onChange={(e) => setRoutine({ ...routine, dinner_time_end: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-xs font-semibold text-textSecondary mb-2">Your routine is set globally for all subjects.</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    🌅 Morning: {userRoutine.morning_study_start?.slice(0, 5)} - {userRoutine.morning_study_end?.slice(0, 5)}
+                  </p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    🌙 Evening: {userRoutine.evening_study_start?.slice(0, 5)} - {userRoutine.evening_study_end?.slice(0, 5)}
+                  </p>
+                  <button onClick={() => setUserRoutine(null)} className="text-xs font-bold text-indigo mt-3 hover:underline">
+                    Edit Global Routine
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wider">Exam Date</label>
+                  <input
+                    type="date"
+                    value={finishBy}
+                    onChange={(e) => setFinishBy(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl text-sm font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wider">Daily Hours</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={dailyHours}
+                    onChange={(e) => setDailyHours(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl text-sm font-medium"
+                  />
                 </div>
               </div>
 
-              {/* Graphic Decoration Box at bottom center */}
-              <div className="mt-8 pt-4 border-t border-border/60 dark:border-slate-800 flex flex-col items-center justify-center">
-                <div className="w-24 h-12 rounded-xl bg-indigo-light/50 dark:bg-indigo-950/40 border border-indigo/20 flex items-center justify-center mb-2">
-                  <Sparkles className="w-6 h-6 text-indigo dark:text-indigo-400" />
-                </div>
-                <p className="text-xs text-textSecondary dark:text-slate-400 font-medium text-center">
-                  FocusPath AI balances workload based on priority stars & deadline proximity.
-                </p>
-              </div>
-
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || subjects.length === 0}
+                className="w-full py-3.5 mt-2 bg-textPrimary dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl shadow-md disabled:opacity-50 flex items-center justify-center space-x-2 transition-all hover:bg-slate-800 cursor-pointer"
+              >
+                {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                <span>{isGenerating ? 'Generating Schedule...' : 'Generate AI Schedule'}</span>
+              </button>
             </div>
           </div>
 
-        </div>
+          {/* Right Column: Extracted Subjects */}
+          <div className="lg:col-span-7">
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center space-x-2 text-textPrimary dark:text-slate-100">
+                  <BookOpen className="w-5 h-5 text-indigo" />
+                  <h3 className="font-bold text-base">Parsed Subjects & Modules</h3>
+                </div>
+              </div>
 
-        {/* Bottom Full-Width Indigo Tinted Panel */}
-        <div className="bg-indigo-light/60 dark:bg-indigo-950/30 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-extrabold text-textPrimary dark:text-slate-100">
-                {COPY.onboarding.hoursTitle}
-              </h3>
-              <p className="text-xs text-textSecondary dark:text-slate-400">
-                {COPY.onboarding.hoursSubtitle}
+              <div className="flex-1 overflow-y-auto p-5">
+                {subjects.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-textSecondary px-6">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <BookOpen className="w-8 h-8 text-slate-300" />
+                    </div>
+                    <p className="font-semibold text-sm">No subjects added yet.</p>
+                    <p className="text-xs mt-1">Name your subject and upload a syllabus to see the extracted modules here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {subjects.map((subject) => {
+                      const isExpanded = expandedSubjectId === subject.id;
+                      return (
+                        <div key={subject.id} className="border border-slate-200 rounded-2xl overflow-hidden transition-all duration-200">
+                          {/* Accordion Header */}
+                          <div 
+                            onClick={() => setExpandedSubjectId(isExpanded ? null : subject.id)}
+                            className="bg-white hover:bg-slate-50 cursor-pointer p-4 flex items-center justify-between"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-xl bg-indigo/10 text-indigo flex items-center justify-center">
+                                <BookOpen className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-textPrimary text-sm">{subject.name}</h4>
+                                <p className="text-xs text-textSecondary font-medium">{subject.modules.length} Modules Extracted</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 text-slate-400">
+                              <button
+                                onClick={(e) => handleDeleteSingleSubject(e, subject.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Subject"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                            </div>
+                          </div>
+
+                          {/* Accordion Body */}
+                          {isExpanded && (
+                            <div className="bg-slate-50 p-4 border-t border-slate-100 space-y-3">
+                              {subject.modules.map((mod) => (
+                                <div key={mod.id} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm">
+                                  <h5 className="text-sm font-bold text-textPrimary mb-2">{mod.title}</h5>
+                                  <div className="space-y-1.5 pl-2 border-l-2 border-indigo/20">
+                                    {mod.topics.map((topic) => (
+                                      <div key={topic.id} className="flex justify-between items-center">
+                                        <span className="text-xs font-medium text-textSecondary line-clamp-1">{topic.name}</span>
+                                        <span className="text-[10px] font-bold text-indigo bg-indigo/5 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">
+                                          ~{topic.estimated_hours}h
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </PageContainer>
+
+      {/* Overflow Modal */}
+      {overflowData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-xl p-8 max-w-md w-full space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="space-y-2 text-center">
+              <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Time Capacity Reached!</h2>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                You have <span className="font-bold text-slate-800 dark:text-slate-200">{overflowData.hours} hours</span> of syllabus left, but no free time before your exam on {finishBy}.
               </p>
             </div>
-            
-            {/* Big Hours Badge */}
-            <span className="text-4xl font-black text-indigo dark:text-indigo-400 tracking-tight">
-              {dailyHours}h
-            </span>
-          </div>
 
-          {/* Range Slider */}
-          <div className="space-y-2">
-            <input
-              type="range"
-              min={1}
-              max={12}
-              value={dailyHours}
-              onChange={(e) => setDailyHours(Number(e.target.value))}
-              className="w-full h-2 bg-white dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo"
-            />
-            <div className="flex justify-between text-xs text-textSecondary dark:text-slate-400 font-bold">
-              <span>1 Hour</span>
-              <span>12 Hours</span>
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={() => setOverflowData(null)}
+                className="w-full py-3 px-4 bg-indigo text-white font-bold text-sm rounded-xl hover:bg-indigo-dark transition-all cursor-pointer"
+              >
+                Extend Exam Date (Edit below)
+              </button>
+              
+              <button
+                onClick={() => setOverflowData(null)}
+                className="w-full py-3 px-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+              >
+                Increase Daily Hours
+              </button>
+
+              <button
+                onClick={() => {
+                  setWeekendWarrior(true);
+                  setOverflowData(null);
+                }}
+                className={`w-full py-3 px-4 font-bold text-sm rounded-xl transition-all border cursor-pointer ${weekendWarrior ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+              >
+                {weekendWarrior ? '✅ Weekend Warrior Enabled' : '⚡ Enable Weekend Warrior (Dynamic Hours based on Difficulty)'}
+              </button>
             </div>
-          </div>
-
-          {/* Target finish date */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-textPrimary dark:text-slate-200 uppercase block">
-              Finish syllabus by
-            </label>
-            <input
-              type="date"
-              value={finishBy}
-              onChange={(e) => setFinishBy(e.target.value)}
-              className="w-full sm:w-auto px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
-            />
-          </div>
-
-          {/* Action Button */}
-          <div className="flex flex-col items-center space-y-2 pt-2">
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="py-3.5 px-8 bg-indigo text-white font-bold text-xs rounded-xl hover:bg-indigo-dark transition-all shadow-lg shadow-indigo/20 active:scale-95 disabled:opacity-50 flex items-center space-x-2.5 cursor-pointer"
-            >
-              {isGenerating ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>{COPY.onboarding.generateBtn}</span>
-                </>
-              )}
-            </button>
-
-            <p className="text-[11px] text-textSecondary dark:text-slate-400 text-center">
-              {COPY.onboarding.aiNote}
-            </p>
+            
+            {weekendWarrior && (
+              <button
+                onClick={handleGenerate}
+                className="w-full py-3 mt-4 bg-emerald-600 text-white font-bold text-sm rounded-xl hover:bg-emerald-700 transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Retry Generation</span>
+              </button>
+            )}
           </div>
         </div>
-
-      </PageContainer>
+      )}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export default function RebuildPlanPage() {
     (async () => {
       try {
         const res = await rebuildSchedule();
-        const rt = (res.rebuilt_tasks || []).filter((t) => t.achievable);
+        const rt = (res.rebuilt_tasks || []).filter((t: any) => t.achievable);
         setTasks(rt);
         if (!res.rebuilt_tasks || res.rebuilt_tasks.length === 0) setNoMissed(true);
       } catch {

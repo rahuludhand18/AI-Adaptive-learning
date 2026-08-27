@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/api';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { UserPlus, Mail, KeyRound, User as UserIcon } from 'lucide-react';
+import { UserPlus, Mail, KeyRound, User as UserIcon, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<'ADULT' | 'PARENT'>('ADULT');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -147,15 +148,22 @@ export default function RegisterPage() {
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="new-password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
-                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 pl-10 pr-12 text-sm outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all font-medium bg-slate-50/20 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 

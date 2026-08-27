@@ -16,7 +16,7 @@ import {
   Eye,
   Smartphone,
   Video,
-  Youtube,
+  MonitorPlay,
   Trash2,
 } from 'lucide-react';
 
@@ -393,7 +393,7 @@ export default function ManageRestrictionsPage() {
               onClick={() => setIsAddVideoModalOpen(true)}
               className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
             >
-              <Youtube className="h-4 w-4" />
+              <MonitorPlay className="h-4 w-4" />
               <span>Add Video</span>
             </button>
           </div>
@@ -407,7 +407,7 @@ export default function ManageRestrictionsPage() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                      <Youtube className="h-5 w-5" />
+                      <MonitorPlay className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{v.title}</h4>
