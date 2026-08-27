@@ -3,6 +3,18 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { apiRequest } from '@/lib/api';
 
+// This hook is mounted from two places at once on every kid page (the route layout AND the
+// per-page KidLayout wrapper), so a single real tab-switch would otherwise fire every side
+// effect below twice (double-counted lockout, duplicate parent-facing activity log rows).
+// Dedupe by timestamp so only the first instance's handler actually does anything per event.
+let lastVisibilityFiredAt = 0;
+function claimVisibilityEvent(): boolean {
+  const now = Date.now();
+  if (now - lastVisibilityFiredAt < 300) return false;
+  lastVisibilityFiredAt = now;
+  return true;
+}
+
 export function useTabTracker() {
   const { user, logout, updateUser } = useAuthStore();
   const router = useRouter();
@@ -10,6 +22,16 @@ export function useTabTracker() {
   const [showWarning, setShowWarning] = useState(false);
   const [isLockedOut, setIsLockedOut] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  // This hook mounts twice per page (route layout + per-page KidLayout), but only one
+  // instance's request actually lands (see claimVisibilityEvent below) — so the persistent
+  // counters mirror the already-shared authStore instead of only updating in the "winning"
+  // instance, keeping both consumers' UI correct regardless of which one made the call.
+  useEffect(() => {
+    if (user) {
+      setTabSwitchCount(user.tab_switch_count ?? 0);
+      setIsLockedOut(Boolean(user.is_locked));
+    }
+  }, [user?.tab_switch_count, user?.is_locked]);
 
   useEffect(() => {
     if (!user) return;
@@ -22,6 +44,10 @@ export function useTabTracker() {
     if (!isKidMode) return; // tab-switch lockout applies to kid mode only
 
     const handleVisibilityChange = async () => {
+      // this hook is mounted twice per page — only the first instance to see a given
+      // transition actually acts on it, so nothing gets logged or counted twice
+      if (!claimVisibilityEvent()) return;
+
       if (document.visibilityState === 'hidden') {
         const allowedSite = sessionStorage.getItem('allowed_website_visit');
         if (allowedSite) {

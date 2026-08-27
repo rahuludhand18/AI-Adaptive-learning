@@ -6,7 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
 import tempfile
 import os
-from llama_parse import LlamaParse
+
 from .models import Subject, Module, Topic, StudySession
 from .serializers import SubjectSerializer, ModuleSerializer, TopicSerializer, StudySessionSerializer
 from .scheduling import extract_syllabus_to_json
@@ -134,7 +134,9 @@ class SyllabusUploadView(views.APIView):
             tmp_path = tmp.name
 
         try:
-            # Parse PDF to markdown
+            # Parse PDF to markdown (imported here, not at module load, so the rest of the
+            # planner app still works even if this optional dependency isn't installed)
+            from llama_parse import LlamaParse
             parser = LlamaParse(result_type="markdown")
             documents = parser.load_data(tmp_path)
             

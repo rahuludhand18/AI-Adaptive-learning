@@ -160,3 +160,28 @@
     font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 }
+
+/* Playful motion for Kid Mode — gentle floating/bobbing/wiggling for mascot & decoration emoji. */
+@keyframes kid-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(4deg); }
+}
+@keyframes kid-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes kid-wiggle {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+.animate-kid-float { animation: kid-float 6s ease-in-out infinite; }
+.animate-kid-bob { animation: kid-bob 2.4s ease-in-out infinite; }
+.animate-kid-wiggle { animation: kid-wiggle 1.6s ease-in-out infinite; }
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+.animate-shake { animation: shake 0.5s ease-in-out; }

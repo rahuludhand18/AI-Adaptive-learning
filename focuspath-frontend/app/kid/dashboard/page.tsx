@@ -153,7 +153,7 @@ export default function KidDashboardPage() {
 
               {/* Left Side: Mascot Frame & Greetings */}
               <div className="flex items-center gap-5">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/20 p-2 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/20 p-2 shadow-sm shrink-0 flex items-center justify-center overflow-hidden animate-kid-bob">
                   <img
                     src="/kid_owl_mascot.png"
                     alt="Buddy Mascot"
@@ -187,7 +187,7 @@ export default function KidDashboardPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => router.push('/kid/learn')}
-                  className="bg-primary hover:bg-primary/90 text-white font-bold text-xs py-2.5 px-5 rounded-full shadow-sm flex items-center gap-2 transition-all cursor-pointer"
+                  className="bg-primary hover:bg-primary/90 text-white font-bold text-xs py-2.5 px-5 rounded-full shadow-sm flex items-center gap-2 transition-all cursor-pointer hover:scale-110 hover:-rotate-2 active:scale-95"
                 >
                   <BookOpen className="h-4 w-4" />
                   <span>Start Learning</span>
@@ -195,7 +195,7 @@ export default function KidDashboardPage() {
 
                 <button
                   onClick={() => router.push('/kid/stories')}
-                  className="bg-slate-50 dark:bg-slate-800 hover:bg-primary/5 hover:text-primary text-slate-700 dark:text-slate-200 font-bold text-xs py-2.5 px-5 rounded-full border border-slate-200/80 dark:border-slate-700 flex items-center gap-2 transition-all cursor-pointer"
+                  className="bg-slate-50 dark:bg-slate-800 hover:bg-primary/5 hover:text-primary text-slate-700 dark:text-slate-200 font-bold text-xs py-2.5 px-5 rounded-full border border-slate-200/80 dark:border-slate-700 flex items-center gap-2 transition-all cursor-pointer hover:scale-110 hover:rotate-2 active:scale-95"
                 >
                   <Rocket className="h-4 w-4 text-primary" />
                   <span>Story Quests</span>

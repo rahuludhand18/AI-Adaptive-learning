@@ -10,7 +10,7 @@ class UserRoutineSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'is_locked', 'tab_switch_count', 'temporary_session_until')
+        fields = ('id', 'username', 'email', 'role', 'age_group', 'is_locked', 'tab_switch_count', 'temporary_session_until')
         read_only_fields = ('id', 'is_locked', 'tab_switch_count', 'temporary_session_until')
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -35,25 +35,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-import secrets
-import string
-
 class KidCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    # required so the Learn page can filter content to the right age bracket from day one
+    age_group = serializers.ChoiceField(choices=User.AgeGroups.choices, required=True)
+
     class Meta:
         model = User
-        fields = ('username',)
+        fields = ('username', 'password', 'age_group')
 
     def create(self, validated_data):
         parent = self.context['request'].user
         
-        # Auto-generate a highly secure random password since children don't log in directly
-        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-        secure_password = ''.join(secrets.choice(alphabet) for i in range(24))
-        
         user = User.objects.create_user(
             username=validated_data['username'],
-            password=secure_password,
-            role=User.Roles.KID
+            password=validated_data['password'],
+            role=User.Roles.KID,
+            age_group=validated_data['age_group'],
         )
         # Create relation
         ParentChildRelation.objects.create(parent=parent, child=user)

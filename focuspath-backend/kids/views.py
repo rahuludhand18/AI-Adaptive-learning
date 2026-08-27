@@ -7,6 +7,22 @@ from rewards.models import StarReward
 from parents.models import Restriction
 
 
+class VerifyMorseView(views.APIView):
+    # Gate: after a child signs in, a parent must tap the correct Morse pattern before the
+    # session actually starts. The correct pattern never reaches the frontend — only a
+    # correct/incorrect result does.
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        u = request.user
+        r, _ = Restriction.objects.get_or_create(child=u)
+        tapped = str(request.data.get('pattern', '') or '').strip()
+        # a child with no pattern configured yet isn't locked out — the parent hasn't set one up
+        if not r.morse_pattern:
+            return Response({'correct': True, 'configured': False})
+        return Response({'correct': tapped == r.morse_pattern, 'configured': True})
+
+
 class MySettingsView(views.APIView):
     # Lets the signed-in child read its own restriction so Kid's Mode can enforce
     # the daily screen-time limit and eye-break interval.

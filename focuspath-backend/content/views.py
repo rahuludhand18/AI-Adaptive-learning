@@ -6,7 +6,7 @@ from content.serializers import (
     EducationLevelSerializer, SubjectSerializer, TopicSerializer, VideoSerializer,
     VideoCreateSerializer, MyVideoSerializer,
 )
-from users.models import User
+from users.models import User, AGE_GROUP_BOUNDS
 
 
 # All content endpoints are read-only; adding/approving content happens in the Django
@@ -45,7 +45,15 @@ class VideoListView(generics.ListAPIView):
     def get_queryset(self):
         qs = Video.objects.filter(is_approved=True)  # never expose unapproved videos to a child
         topic = self.request.query_params.get('topic')  # ?topic=<id>
-        return qs.filter(topic_id=topic) if topic else qs
+        if topic:
+            qs = qs.filter(topic_id=topic)
+        # a Kid only ever sees videos whose age range overlaps the bracket their parent assigned —
+        # rule-based on the existing age_min/age_max fields, not a manual grade pick
+        user = self.request.user
+        if user.role == User.Roles.KID and user.age_group in AGE_GROUP_BOUNDS:
+            lo, hi = AGE_GROUP_BOUNDS[user.age_group]
+            qs = qs.filter(age_min__lte=hi, age_max__gte=lo)
+        return qs
 
 
 class IsParentUser(BasePermission):
@@ -122,12 +130,20 @@ class YouTubeSearchView(APIView):
         # Keep our Python-side safety filter just in case
         bad_keywords = ['trailer', 'movie', 'film', 'teaser', 'reaction', 'song', 'music', 'edit', 'cinematic', 'lyric', 'bollywood', 'hollywood', 'promo']
         
+        # This is a live search, so it can't be checked against a video's exact age_min/age_max
+        # like the curated catalog can (VideoListView) — as a best-effort second layer, bias the
+        # query toward the child's assigned age bracket so results at least skew age-appropriate.
+        age_hint = ''
+        if request.user.role == User.Roles.KID and request.user.age_group in AGE_GROUP_BOUNDS:
+            lo, _ = AGE_GROUP_BOUNDS[request.user.age_group]
+            age_hint = ' for kids' if lo <= 8 else ' for students'
+
         videos = []
         try:
             for cat_id in safe_categories:
                 params = {
                     "part": "snippet",
-                    "q": f"{query} tutorial OR {query} educational",
+                    "q": f"{query} tutorial{age_hint} OR {query} educational{age_hint}",
                     "type": "video",
                     "videoCategoryId": cat_id,
                     "safeSearch": "strict",

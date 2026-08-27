@@ -1,10 +1,12 @@
 import { create } from 'zustand';
+import { apiRequest } from '@/lib/api';
 
 interface User {
   id: number;
   username: string;
   email: string;
   role: 'ADULT' | 'PARENT' | 'KID';
+  age_group?: '1-3' | '4-6' | '7-8' | '9-10' | '11-12' | null;
   is_locked: boolean;
   tab_switch_count: number;
   temporary_session_until: string | null;
@@ -95,6 +97,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: () => {
     if (typeof window !== 'undefined') {
+      // best-effort log so a parent can see when this session ended (fire before the token is erased)
+      apiRequest('/api/auth/logout/', { method: 'POST' }).catch(() => {});
       eraseCookie('accessToken');
       eraseCookie('refreshToken');
       eraseCookie('user');
