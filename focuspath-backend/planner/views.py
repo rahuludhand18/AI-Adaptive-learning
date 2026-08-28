@@ -251,10 +251,76 @@ class SyllabusUploadView(ChildResolverMixin, views.APIView):
             return Response({"detail": f"Successfully extracted and saved subject: {subject.name}"}, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            import traceback
+            traceback.print_exc()
+            print(f"Extraction failed with error: {str(e)}")
+            return Response({"error": "Extraction failed", "details": str(e)}, status=400)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+
+from django.db.models import F
+from datetime import timedelta, date
+
+class CarryOverSessionsView(ChildResolverMixin, views.APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        target_user = self.get_target_user(request)
+        target_date = date.today()
+        
+        # STEP 1: Shift all existing tasks from the target date onwards forward by 1 day
+        StudySession.objects.filter(
+            user=target_user, 
+            date__gte=target_date
+        ).update(date=F('date') + timedelta(days=1))
+        
+        # STEP 2: Now safely move the overdue/missed tasks into the newly emptied target_date
+        StudySession.objects.filter(
+            user=target_user,
+            date__lt=target_date,
+            is_completed=False
+        ).update(date=target_date)
+        
+        return Response({"detail": "Overdue sessions shifted successfully."}, status=status.HTTP_200_OK)
+
+class CarryOverSingleSessionView(ChildResolverMixin, views.APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        target_user = self.get_target_user(request)
+        try:
+            session = StudySession.objects.get(id=pk, user=target_user)
+        except StudySession.DoesNotExist:
+            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        new_date = session.date + timedelta(days=1)
+        subject = session.topic.module.subject
+        
+        # Count how many pending blocks exist on tomorrow for this specific subject
+        existing_blocks = StudySession.objects.filter(
+            user=target_user,
+            topic__module__subject=subject,
+            date=new_date,
+            is_completed=False
+        ).count()
+        
+        # If tomorrow already has 3 or more blocks, pushing another one makes 4 (too much).
+        # We must shift the original scheduled blocks to the day after tomorrow.
+        if existing_blocks >= 3:
+            StudySession.objects.filter(
+                user=target_user,
+                topic__module__subject=subject,
+                date__gte=new_date,
+                is_completed=False,
+                id__gt=session.id # MAGIC FILTER: Only shifts blocks created AFTER this one (the future curriculum)
+            ).update(date=F('date') + timedelta(days=1))
+        
+        # Safely move this session to tomorrow
+        session.date = new_date
+        session.save()
+        
+        return Response({"status": "Cascading shift successful"})
 
 # Placeholder for Clear Schedule View
 class ClearScheduleView(ChildResolverMixin, views.APIView):
@@ -272,20 +338,39 @@ class AIRebuildScheduleView(views.APIView):
 
     def post(self, request):
         return Response({"detail": "Not implemented yet - Waiting for Phase 3"}, status=status.HTTP_200_OK)
-
 class AIAssistantView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         from chatbot.rag_engine import ask_focuspath
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, date
         from planner.models import Subject, StudySession
         
         query = request.data.get('query', '')
         mode = request.data.get('mode', 'GENERAL').upper()
         chat_history = request.data.get('chat_history', [])
         
-        dynamic_context = {}
+        # --- NEW LIVE CONTEXT LOGIC ---
+        today = date.today()
+        seven_days_later = today + timedelta(days=7)
+        upcoming_sessions = StudySession.objects.filter(
+            user=request.user, 
+            date__gte=today,
+            date__lte=seven_days_later,
+            is_completed=False
+        ).select_related('topic__module__subject').order_by('date', 'start_time')
+
+        schedule_context = f"SYSTEM INSTRUCTION - LIVE USER DATA: Today's date is {today}. The user's upcoming pending schedule for the next 7 days is:\n"
+        if upcoming_sessions.exists():
+            for s in upcoming_sessions:
+                subject = s.topic.module.subject.name if s.topic and s.topic.module else "Custom"
+                topic = s.topic.name if s.topic else "Custom Topic"
+                start = s.start_time.strftime('%H:%M') if s.start_time else "TBD"
+                schedule_context += f"- [{s.date}] {subject}: {topic} at {start}\n"
+        else:
+            schedule_context += "- No tasks scheduled for the next 7 days. They are completely free!\n"
+
+        dynamic_context = {'live_schedule': schedule_context}
         if mode == 'PLANNER':
             sessions = StudySession.objects.filter(user=request.user, is_completed=False)[:10]
             dynamic_context['tasks'] = [f"{s.topic.name if s.topic else 'Session'} on {s.date}" for s in sessions]
@@ -362,7 +447,12 @@ class AIAssistantView(views.APIView):
                                 }}
                             )
             
-            res_data = {"reply": response.text}
+            try:
+                reply_text = response.text
+            except ValueError:
+                reply_text = "I'm sorry, I tried to perform an action but couldn't formulate a text response. Please ask me directly or provide more details!"
+                
+            res_data = {"reply": reply_text}
             if action:
                 res_data["action"] = action
                 

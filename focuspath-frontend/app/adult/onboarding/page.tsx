@@ -27,6 +27,7 @@ export default function AdultOnboardingPage() {
   const [difficulty, setDifficulty] = useState('Medium');
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isParsingSyllabus, setIsParsingSyllabus] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [executionMode, setExecutionMode] = useState<'study' | 'revision'>('study');
@@ -103,6 +104,7 @@ export default function AdultOnboardingPage() {
       alert("Please type a Subject Name before uploading the syllabus.");
       return;
     }
+    setUploadError(null);
     setUploadedFileName(file.name);
     setIsParsingSyllabus(true);
     try {
@@ -110,7 +112,7 @@ export default function AdultOnboardingPage() {
       setNewSubjectName('');
       await loadSubjects();
     } catch (e: any) {
-      alert(e.message || "Upload failed");
+      setUploadError("Failed to connect to the AI extractor. Please check your API keys and try again.");
     } finally {
       setIsParsingSyllabus(false);
     }
@@ -231,6 +233,14 @@ export default function AdultOnboardingPage() {
                 <h2 className="text-base font-extrabold text-slate-900 mb-2">
                   3. Upload Syllabus PDF
                 </h2>
+                
+                {uploadError && (
+                  <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold flex items-center justify-between">
+                    <span>{uploadError}</span>
+                    <button onClick={() => setUploadError(null)} className="font-bold cursor-pointer">✕</button>
+                  </div>
+                )}
+
                 <div
                   onDragOver={(e) => {
                     e.preventDefault();

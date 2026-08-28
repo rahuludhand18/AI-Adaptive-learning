@@ -134,6 +134,10 @@ OUTPUT FORMAT:
         generation_config.temperature = 0.1
 
     system_instruction += "\nIf the user asks to schedule, add, or plan a study block, extract the subject, date, and time, and call the create_study_block function. If the user mentions a day like 'Wednesday', calculate the exact YYYY-MM-DD for the next occurrence of that day."
+    
+    live_schedule = dynamic_db_context.get('live_schedule', '')
+    if live_schedule:
+        system_instruction += f"\n\n{live_schedule}"
 
     # Define the tool
     tools = [{

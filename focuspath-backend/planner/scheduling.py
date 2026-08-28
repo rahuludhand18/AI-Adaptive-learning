@@ -51,7 +51,15 @@ You must return ONLY valid JSON. Do not wrap the JSON in markdown formatting blo
 """
 
 def extract_syllabus_to_json(llama_parse_markdown):
-    genai.configure(api_key=get_random_gemini_key())
+    # 1. Force Python to delete any hidden OAuth credentials overriding your key
+    if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
+        del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+
+    # 2. Fetch the clean key
+    api_key = get_random_gemini_key()
+
+    # 3. CRITICAL FIX: Force 'rest' transport to bypass the gRPC OAuth bug
+    genai.configure(api_key=api_key, transport='rest')
     # Force Gemini to output raw JSON without markdown blocks
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",

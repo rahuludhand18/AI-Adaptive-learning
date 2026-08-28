@@ -36,6 +36,14 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Forgot password state
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetStep, setResetStep] = useState(1);
+  const [securityHint, setSecurityHint] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   // Initialize lockout & role redirect parameters
   useEffect(() => {
@@ -62,6 +70,7 @@ function LoginContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLocked(false);
     setLoading(true);
 
@@ -89,6 +98,46 @@ function LoginContent() {
       } else {
         setError(err.message || 'Incorrect credentials. Please try again.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGetHint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await apiRequest('/api/auth/get-hint/', {
+        method: 'POST',
+        body: JSON.stringify({ username })
+      });
+      setSecurityHint(res.security_hint);
+      setResetStep(2);
+    } catch (err: any) {
+      setError(err.error || 'Could not find security hint for this username.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await apiRequest('/api/auth/reset-password/', {
+        method: 'POST',
+        body: JSON.stringify({ username, security_answer: securityAnswer, new_password: newPassword })
+      });
+      setSuccess("Password reset successfully. You can now login.");
+      setIsResetting(false);
+      setResetStep(1);
+      setPassword('');
+      setSecurityAnswer('');
+      setNewPassword('');
+    } catch (err: any) {
+      setError(err.error || 'Failed to reset password. Incorrect answer?');
     } finally {
       setLoading(false);
     }
@@ -246,7 +295,7 @@ function LoginContent() {
           </p>
         </div>
 
-        {/* Error States */}
+        {/* Error and Success States */}
         {error && (
           <div className={`p-4 rounded-2xl flex gap-3 items-start border text-sm ${locked
               ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
@@ -259,8 +308,81 @@ function LoginContent() {
             </div>
           </div>
         )}
+        {success && (
+          <div className="p-4 rounded-2xl flex gap-3 items-start border text-sm bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+            <div className="space-y-1">
+              <p className="font-semibold">Success</p>
+              <p className="text-xs leading-relaxed font-medium">{success}</p>
+            </div>
+          </div>
+        )}
 
-        {/* Login Form */}
+        {isResetting ? (
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold">Reset Password</h3>
+            {resetStep === 1 ? (
+              <form onSubmit={handleGetHint} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your username"
+                    className="w-full rounded-2xl border border-slate-200 py-3 px-4 text-sm outline-none bg-slate-50/20"
+                    required
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <button type="button" onClick={() => { setIsResetting(false); setError(null); }} className="text-sm text-slate-500 hover:underline">Cancel</button>
+                  <button type="submit" disabled={loading} className="bg-indigo-600 text-white font-semibold text-sm py-2 px-4 rounded-xl disabled:opacity-50">
+                    {loading ? 'Checking...' : 'Get Hint'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Hint: {securityHint}
+                </p>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                    Security Answer
+                  </label>
+                  <input
+                    type="text"
+                    value={securityAnswer}
+                    onChange={(e) => setSecurityAnswer(e.target.value)}
+                    placeholder="Your answer"
+                    className="w-full rounded-2xl border border-slate-200 py-3 px-4 text-sm outline-none bg-slate-50/20"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    className="w-full rounded-2xl border border-slate-200 py-3 px-4 text-sm outline-none bg-slate-50/20"
+                    required
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <button type="button" onClick={() => { setIsResetting(false); setResetStep(1); setError(null); }} className="text-sm text-slate-500 hover:underline">Cancel</button>
+                  <button type="submit" disabled={loading} className="bg-indigo-600 text-white font-semibold text-sm py-2 px-4 rounded-xl disabled:opacity-50">
+                    {loading ? 'Resetting...' : 'Reset Password'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
@@ -312,6 +434,10 @@ function LoginContent() {
               </button>
             </div>
           </div>
+          
+          <div className="flex justify-end mt-1">
+            <button type="button" onClick={() => { setIsResetting(true); setResetStep(1); setError(null); setSuccess(null); }} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Forgot Password?</button>
+          </div>
 
           <button
             type="submit"
@@ -324,6 +450,7 @@ function LoginContent() {
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
+        )}
 
         {/* Footer info */}
         <div className="border-t border-slate-100 dark:border-slate-800 pt-4 text-center">

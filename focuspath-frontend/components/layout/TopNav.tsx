@@ -114,7 +114,7 @@ export const TopNav: React.FC = () => {
           </Link>
 
           {/* Avatar Profile Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative z-50" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="w-9 h-9 rounded-full ring-2 ring-indigo-500/20 dark:ring-indigo-400/30 overflow-hidden cursor-pointer hover:ring-indigo-500 transition-all focus:outline-none flex items-center justify-center"
@@ -127,7 +127,7 @@ export const TopNav: React.FC = () => {
 
             {/* Roll-out Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-2.5 space-y-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-2.5 space-y-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
                 {/* User Header Info */}
                 <div className="flex items-center space-x-3 p-2 bg-indigo-50/50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
                   <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center bg-indigo-600 text-white text-xs font-bold">

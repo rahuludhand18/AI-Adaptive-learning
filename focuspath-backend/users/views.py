@@ -4,16 +4,29 @@ from rest_framework.permissions import IsAuthenticated
 from .models import UserRoutine
 from .serializers import UserRoutineSerializer
 
+from users.models import User, ParentChildRelation
+
 class UserRoutineView(views.APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_target_user(self, request):
+        if request.user.role == User.Roles.PARENT:
+            child_id = request.headers.get('X-Child-Id') or request.query_params.get('child_id')
+            if child_id:
+                relation = ParentChildRelation.objects.filter(parent=request.user, child_id=child_id).first()
+                if relation:
+                    return relation.child
+        return request.user
+
     def get(self, request):
-        routine, created = UserRoutine.objects.get_or_create(user=request.user)
+        target_user = self.get_target_user(request)
+        routine, created = UserRoutine.objects.get_or_create(user=target_user)
         serializer = UserRoutineSerializer(routine)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        routine, created = UserRoutine.objects.get_or_create(user=request.user)
+        target_user = self.get_target_user(request)
+        routine, created = UserRoutine.objects.get_or_create(user=target_user)
         serializer = UserRoutineSerializer(routine, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

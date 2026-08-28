@@ -117,7 +117,7 @@ class ParentAggregateAnalyticsView(views.APIView):
 
         # Count active subjects / tasks
         tasks = StudySession.objects.filter(user__in=children)
-        active_subjects = tasks.values('subject').distinct().count()
+        active_subjects = tasks.values('topic__module__subject').distinct().count()
 
         return Response({
             'total_study_hours': round(total_study_minutes / 60, 1),

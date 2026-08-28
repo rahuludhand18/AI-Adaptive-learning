@@ -25,6 +25,13 @@ export default function ParentAccountPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [kids, setKids] = useState<any[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Change Password state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const fetchKids = async () => {
     try {
@@ -36,6 +43,7 @@ export default function ParentAccountPage() {
   };
 
   useEffect(() => {
+    setIsMounted(true);
     fetchKids();
   }, []);
 
@@ -59,13 +67,41 @@ export default function ParentAccountPage() {
       setSuccess(`Child account "${newKid.username}" created and linked to your Parent account.`);
       setNewKidUsername('');
       setNewKidPassword('');
-      fetchKids();
+      setKids([...kids, newKid]);
     } catch (err: any) {
-      setError(err.message || 'Failed to create child profile. Username might be already taken.');
+      setError(err.error || 'Failed to create child profile. Please check credentials.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError("New passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    setSuccess(null);
+    setError(null);
+    try {
+      await apiRequest('/api/auth/change-password/', {
+        method: 'POST',
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+      });
+      setSuccess("Password updated successfully.");
+      setShowPasswordModal(false);
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setError(err.error || "Failed to change password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isMounted) return null;
 
   return (
     <ParentLayout pendingRequestsCount={1}>
@@ -110,7 +146,7 @@ export default function ParentAccountPage() {
           {/* Parent Profile Card (Col 6) */}
           <div className="col-span-12 lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[32px] p-8 shadow-2xs space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              <div suppressHydrationWarning className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                 {user?.username ? user.username.charAt(0).toUpperCase() : 'P'}
               </div>
               <div>
@@ -137,6 +173,13 @@ export default function ParentAccountPage() {
                 <span className="font-bold text-slate-900 dark:text-slate-100">{kids.length} Student Profiles</span>
               </div>
             </div>
+
+            <button 
+              onClick={() => setShowPasswordModal(true)}
+              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors w-full"
+            >
+              Change Password
+            </button>
           </div>
 
           {/* Add Child Profile Bento Box (Col 6) */}
@@ -281,6 +324,62 @@ export default function ParentAccountPage() {
         </div>
 
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-8 relative">
+            <button 
+              onClick={() => setShowPasswordModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6">Change Password</h2>
+            
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 px-1">Old Password</label>
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 px-1">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 px-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 py-3 px-4 text-sm font-medium outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/20 bg-slate-50/40 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-3 px-5 rounded-2xl shadow-sm transition-all mt-6 disabled:opacity-60"
+              >
+                {loading ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </ParentLayout>
   );
 }

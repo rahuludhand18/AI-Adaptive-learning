@@ -175,6 +175,12 @@ export const carryOverOverdue = async (childId?: string) => {
       method: 'POST',
   });
 };
+
+export const carryOverSession = async (sessionId: string | number) => {
+    return apiRequest(`/api/planner/sessions/${sessionId}/carry_over/`, {
+        method: 'POST',
+    });
+};
 export async function rebuildSchedule(): Promise<any> { return {} as any; }
 export async function acceptRebuild(d: any): Promise<any> { return {} as any; }
 export async function askPlannerAssistant(query: string, mode: string, history: any[]): Promise<{ reply: string, action?: string, error?: boolean }> {

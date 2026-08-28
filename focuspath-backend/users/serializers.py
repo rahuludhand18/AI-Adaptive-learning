@@ -14,12 +14,14 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'is_locked', 'tab_switch_count', 'temporary_session_until')
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True)
+    security_hint = serializers.CharField(required=False, allow_blank=True)
+    security_answer = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'role')
+        fields = ('username', 'email', 'password', 'role', 'security_hint', 'security_answer')
 
     def validate_role(self, value):
         if value == User.Roles.KID:
@@ -31,12 +33,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            role=validated_data['role']
+            role=validated_data['role'],
+            security_hint=validated_data.get('security_hint', ''),
+            security_answer=validated_data.get('security_answer', '')
         )
         return user
 
 class KidCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, required=True)
     # required so the Learn page can filter content to the right age bracket from day one
     age_group = serializers.ChoiceField(choices=User.AgeGroups.choices, required=True)
     grade_level = serializers.CharField(max_length=20, required=False, allow_blank=True)

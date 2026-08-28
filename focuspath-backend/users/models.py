@@ -48,6 +48,9 @@ class User(AbstractUser):
         null=True, blank=True
     )
     
+    security_hint = models.CharField(max_length=255, null=True, blank=True)
+    security_answer = models.CharField(max_length=255, null=True, blank=True)
+    
     is_locked = models.BooleanField(default=False)
     tab_switch_count = models.IntegerField(default=0)
     temporary_session_until = models.DateTimeField(null=True, blank=True)

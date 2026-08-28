@@ -12,7 +12,7 @@ import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
 import { TimeBlock } from '@/services/focusApi';
 import { apiRequest } from '@/lib/api';
-import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteSession, createSession } from '@/lib/plannerApi';
+import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteSession, createSession, carryOverSession } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Circle,
@@ -28,6 +28,7 @@ import {
   UploadCloud,
   ChevronLeft,
   ChevronRight,
+  ArrowRight
 } from 'lucide-react';
 
 // Helper to parse time string ("08:00" or "03:00 PM" or "16:00") into minutes of day
@@ -148,7 +149,8 @@ export default function AdultPlannerPage() {
   };
 
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
-  const [selectedDayIndex, setSelectedDayIndex] = useState(() => (new Date().getDay() + 6) % 7); // default to today
+  const [selectedDate, setSelectedDate] = useState(() => new Date()); // track active date
+  const selectedDayIndex = (selectedDate.getDay() + 6) % 7; // derived from selectedDate
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   // block currently being edited; null means the modal is in "add new" mode
@@ -228,19 +230,26 @@ export default function AdultPlannerPage() {
     router.push(`/adult/focus?${params.toString()}`);
   };
 
-  // real current week: Monday..Sunday with today's actual dates + date keys
+  // real current week based on selectedDate
   const days = (() => {
-    const now = new Date();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // back up to Monday
+    const monday = new Date(selectedDate);
+    monday.setDate(selectedDate.getDate() - ((selectedDate.getDay() + 6) % 7)); // back up to Monday
     const abbr = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     return abbr.map((d, i) => {
       const dt = new Date(monday);
       dt.setDate(monday.getDate() + i);
       const dateKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      return { day: d, date: String(dt.getDate()), index: i, dateKey };
+      return { day: d, date: String(dt.getDate()), index: i, dateKey, fullDate: dt };
     });
   })();
+
+  const changeDateByDays = (daysOffset: number) => {
+    setSelectedDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(newDate.getDate() + daysOffset);
+      return newDate;
+    });
+  };
 
   const handleSaveBlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,6 +319,21 @@ export default function AdultPlannerPage() {
           <span className="text-[9px] font-black bg-orange-500 text-white px-1.5 py-0.5 rounded uppercase shrink-0">CURRENT</span>
         )}
         <div className="flex items-center gap-1.5 shrink-0">
+          <button 
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await carryOverSession(block.id);
+                await loadBlocks();
+              } catch (error) {
+                console.error("Failed to carry over", error);
+              }
+            }}
+            className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+            title="Push to Tomorrow"
+          >
+            <ArrowRight className="w-4 h-4" />
+          </button>
           <button onClick={(e) => startBlock(block, e)} title="Start focus session" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-orange-500 hover:bg-orange-500/10 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
             <Play className="w-4 h-4" />
           </button>
@@ -397,19 +421,43 @@ export default function AdultPlannerPage() {
               </button>
             )}
 
-            {/* Day / Week / Month View Toggle */}
-            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
-              {(['day', 'week', 'month'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                    viewMode === mode ? 'bg-orange-500 text-white shadow-sm' : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
+            {/* Day / Week / Month View Toggle & Navigation */}
+            <div className="flex items-center space-x-2">
+              {(viewMode === 'week' || viewMode === 'day') && (
+                <div className="flex items-center space-x-1 mr-2 bg-white dark:bg-slate-900 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm p-1">
+                  <button 
+                    onClick={() => changeDateByDays(viewMode === 'week' ? -7 : -1)} 
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedDate(new Date())} 
+                    className="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    Today
+                  </button>
+                  <button 
+                    onClick={() => changeDateByDays(viewMode === 'week' ? 7 : 1)} 
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
+                {(['day', 'week', 'month'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
+                      viewMode === mode ? 'bg-orange-500 text-white shadow-sm' : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -423,7 +471,7 @@ export default function AdultPlannerPage() {
               return (
                 <button
                   key={item.day}
-                  onClick={() => setSelectedDayIndex(item.index)}
+                  onClick={() => setSelectedDate(item.fullDate)}
                   className={`relative py-3 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
@@ -588,7 +636,14 @@ export default function AdultPlannerPage() {
                   const c = counts[key] || 0;
                   const isToday = key === todayKey;
                   return (
-                    <div key={key} className={`aspect-square rounded-xl border p-1.5 flex flex-col ${isToday ? 'border-orange-500 bg-orange-500/10 dark:bg-indigo-950/30' : 'border-orange-200 dark:border-slate-800'}`}>
+                    <div 
+                      key={key} 
+                      onClick={() => {
+                        setSelectedDate(new Date(year, month, d));
+                        setViewMode('day');
+                      }}
+                      className={`cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 aspect-square rounded-xl border p-1.5 flex flex-col ${isToday ? 'border-orange-500 bg-orange-500/10 dark:bg-indigo-950/30' : 'border-orange-200 dark:border-slate-800'}`}
+                    >
                       <span className={`text-xs font-bold ${isToday ? 'text-orange-500 dark:text-orange-500-400' : 'text-textPrimary dark:text-slate-200'}`}>{d}</span>
                       {c > 0 && (
                         <span className="mt-auto text-[9px] font-bold text-orange-500 dark:text-orange-500-400 bg-orange-100 dark:bg-indigo-950/60 rounded px-1 self-start">{c} block{c > 1 ? 's' : ''}</span>

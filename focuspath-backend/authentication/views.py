@@ -79,8 +79,67 @@ class LogoutLogView(views.APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request):
-        LoginEvent.objects.create(user=request.user, event_type=LoginEvent.EventType.LOGOUT)
-        return Response({"detail": "Logged."}, status=status.HTTP_201_CREATED)
+        if request.user.role == User.Roles.KID:
+            LoginEvent.objects.create(user=request.user, event_type=LoginEvent.EventType.LOGOUT)
+        return Response(status=status.HTTP_205_RESET_CONTENT)
+
+class ChangePasswordView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not old_password or not new_password:
+            return Response({'error': 'Please provide old_password and new_password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        if not user.check_password(old_password):
+            return Response({'error': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'success': 'Password updated successfully'}, status=status.HTTP_200_OK)
+
+class GetHintView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        if not username:
+            return Response({'error': 'Please provide username'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = User.objects.filter(username=username).first()
+        if not user:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        hint = user.security_hint
+        if not hint:
+            return Response({'error': 'No security question set for this user'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response({'security_hint': hint}, status=status.HTTP_200_OK)
+
+class ResetPasswordView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        security_answer = request.data.get('security_answer')
+        new_password = request.data.get('new_password')
+
+        if not username or not security_answer or not new_password:
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(username=username).first()
+        if not user:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not user.security_answer or user.security_answer.lower() != security_answer.lower():
+            return Response({'error': 'Incorrect security answer'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'success': 'Password reset successfully'}, status=status.HTTP_200_OK)
 
 class VerifyPinView(generics.GenericAPIView):
     permission_classes = (IsAuthenticated,)
