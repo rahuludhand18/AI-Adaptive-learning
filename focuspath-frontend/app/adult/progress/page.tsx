@@ -88,9 +88,14 @@ export default function AdultProgressPage() {
   const pct = total ? Math.round((done / total) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
-      <TopNav />
-      <PageContainer>
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100 relative overflow-hidden flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
+      {/* Decorative blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+
+      <div className="z-10 w-full relative">
+        <TopNav />
+        <PageContainer>
         {/* Header + overall progress */}
         <div className="space-y-3">
           <div>
@@ -219,6 +224,7 @@ export default function AdultProgressPage() {
           </div>
         )}
       </PageContainer>
+      </div>
     </div>
   );
 }

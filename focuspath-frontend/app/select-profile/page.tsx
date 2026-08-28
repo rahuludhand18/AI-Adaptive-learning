@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, User } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
-import { setCookie } from '@/lib/api'; // Assuming setCookie is exported or we can just use document.cookie
+import MorseCodeLoginModal from '@/components/kid/MorseCodeLoginModal';
 
 // Helper to set cookie if not in lib/api
 const setCookieValue = (name: string, value: string, days = 7) => {
@@ -21,6 +21,11 @@ export default function SelectProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Dynamic children state
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChild, setSelectedChild] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -28,14 +33,26 @@ export default function SelectProfilePage() {
     useRef<HTMLInputElement>(null),
   ];
 
-  const handleChildSelect = () => {
-    setCookieValue('activeRole', 'child');
-    router.push('/kid/dashboard');
-  };
+  useEffect(() => {
+    const fetchChildren = async () => {
+      try {
+        const data = await apiRequest('/api/parents/kids/');
+        setChildren(data);
+      } catch (err) {
+        console.error('Failed to fetch children:', err);
+      }
+    };
+    fetchChildren();
+  }, []);
 
   const handleParentSelect = () => {
     setShowPinModal(true);
     setTimeout(() => inputRefs[0].current?.focus(), 100);
+  };
+
+  const handleChildSelect = (child: any) => {
+    setSelectedChild(child);
+    setIsModalOpen(true);
   };
 
   const handlePinChange = (index: number, value: string) => {
@@ -49,6 +66,12 @@ export default function SelectProfilePage() {
     if (value && index < 3) {
       inputRefs[index + 1].current?.focus();
     }
+
+    // Auto-verify if all 4 digits are filled
+    const fullPin = newPin.join('');
+    if (fullPin.length === 4) {
+      verifyPin(fullPin);
+    }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -57,12 +80,7 @@ export default function SelectProfilePage() {
     }
   };
 
-  useEffect(() => {
-    const fullPin = pin.join('');
-    if (fullPin.length === 4) {
-      verifyPin(fullPin);
-    }
-  }, [pin]);
+
 
   const verifyPin = async (fullPin: string) => {
     setLoading(true);
@@ -74,7 +92,11 @@ export default function SelectProfilePage() {
       });
       
       if (res.success) {
+        // Clear child-mode cookies so the tab tracker doesn't fire on the parent
         setCookieValue('activeRole', 'parent');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('activeChildId');
+        }
         setShowPinModal(false);
         router.push('/parent/dashboard');
       }
@@ -94,32 +116,39 @@ export default function SelectProfilePage() {
         <p className="text-slate-500 font-medium">Select your profile to continue</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 w-full max-w-2xl justify-center">
-        {/* Child Profile */}
-        <button
-          onClick={handleChildSelect}
-          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all flex flex-col items-center justify-center gap-4 group"
-        >
-          <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
-            <User className="h-10 w-10 text-emerald-500" />
-          </div>
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors">Child / Student</h2>
-            <p className="text-sm text-slate-500 mt-1">Access your learning journey</p>
-          </div>
-        </button>
+      <div className="flex flex-wrap gap-6 w-full max-w-4xl justify-center">
+        {/* Dynamic Child Profiles */}
+        {children.map((child) => (
+          <button
+            key={child.id}
+            onClick={() => handleChildSelect(child)}
+            className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all flex flex-col items-center justify-center gap-4 group cursor-pointer"
+          >
+            <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform text-emerald-500 text-3xl font-bold">
+              {child.username ? child.username.charAt(0).toUpperCase() : <User className="h-10 w-10" />}
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors">
+                {child.username}
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">Student</p>
+            </div>
+          </button>
+        ))}
 
         {/* Parent Profile */}
         <button
           onClick={handleParentSelect}
-          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 shadow-sm hover:shadow-md hover:border-indigo-500/30 transition-all flex flex-col items-center justify-center gap-4 group"
+          className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 shadow-sm hover:shadow-md hover:border-indigo-500/30 transition-all flex flex-col items-center justify-center gap-4 group cursor-pointer"
         >
-          <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
-            <ShieldCheck className="h-10 w-10 text-indigo-500" />
+          <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform text-indigo-500 text-3xl font-bold">
+            <ShieldCheck className="h-10 w-10" />
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 transition-colors">Parent</h2>
-            <p className="text-sm text-slate-500 mt-1">Manage settings and restrictions</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 transition-colors">
+              Parent
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">Admin</p>
           </div>
         </button>
       </div>
@@ -134,7 +163,7 @@ export default function SelectProfilePage() {
                 setPin(['', '', '', '']);
                 setError(null);
               }}
-              className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -143,11 +172,19 @@ export default function SelectProfilePage() {
               <div className="mx-auto w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl flex items-center justify-center mb-4 text-indigo-600">
                 <ShieldCheck className="h-6 w-6" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Enter Parent PIN</h2>
-              <p className="text-xs font-medium text-slate-500 mt-2">
-                If no PIN is set, the one you enter will be saved as your PIN.
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Enter Parent PIN</h2>
+              <p className="text-sm font-bold text-slate-500">
+                Enter your 4-digit parent PIN to continue.
               </p>
             </div>
+
+            {error && (
+              <div className="text-center mb-6">
+                <p className="text-red-500 text-sm font-bold bg-red-50 py-2 rounded-lg border border-red-200">
+                  {error}
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-center gap-3 mb-6">
               {pin.map((digit, i) => (
@@ -165,10 +202,6 @@ export default function SelectProfilePage() {
               ))}
             </div>
 
-            {error && (
-              <p className="text-center text-sm font-semibold text-rose-500 mb-4 animate-in shake">{error}</p>
-            )}
-
             {loading && (
               <div className="flex justify-center text-indigo-500">
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -176,6 +209,13 @@ export default function SelectProfilePage() {
             )}
           </div>
         </div>
+      )}
+
+      {isModalOpen && selectedChild && (
+        <MorseCodeLoginModal
+          child={selectedChild}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
     </div>
   );

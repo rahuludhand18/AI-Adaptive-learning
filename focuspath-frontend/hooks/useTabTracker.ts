@@ -22,10 +22,8 @@ export function useTabTracker() {
   const [showWarning, setShowWarning] = useState(false);
   const [isLockedOut, setIsLockedOut] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  // This hook mounts twice per page (route layout + per-page KidLayout), but only one
-  // instance's request actually lands (see claimVisibilityEvent below) — so the persistent
-  // counters mirror the already-shared authStore instead of only updating in the "winning"
-  // instance, keeping both consumers' UI correct regardless of which one made the call.
+
+  // Sync local state from the shared auth store
   useEffect(() => {
     if (user) {
       setTabSwitchCount(user.tab_switch_count ?? 0);
@@ -36,12 +34,13 @@ export function useTabTracker() {
   useEffect(() => {
     if (!user) return;
 
-    // Kid mode can be entered by both KID accounts AND adult/parent accounts
-    // that switched profiles using the activeRole cookie. Check both.
-    const isKidMode = user.role === 'KID' ||
+    // Tab-switch lockout applies ONLY to a real KID account that has entered via the
+    // child profile selector (activeRole=child cookie). A parent browsing /kid/* pages,
+    // or a stale cookie left over from a previous child session, must NOT trigger the lockout.
+    const isKidMode = user.role === 'KID' &&
       (typeof document !== 'undefined' && document.cookie.includes('activeRole=child'));
-    
-    if (!isKidMode) return; // tab-switch lockout applies to kid mode only
+
+    if (!isKidMode) return;
 
     const handleVisibilityChange = async () => {
       // this hook is mounted twice per page — only the first instance to see a given
@@ -76,7 +75,6 @@ export function useTabTracker() {
           if (res.tab_switch_count) {
             updateUser({ tab_switch_count: res.tab_switch_count });
             setTabSwitchCount(res.tab_switch_count);
-            // Show custom modal instead of alert
             setShowWarning(true);
           }
         } catch (err: any) {

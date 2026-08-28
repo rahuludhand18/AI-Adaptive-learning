@@ -5,6 +5,7 @@ import { generateSchedule, uploadSyllabus, clearSchedule, listSubjects, deleteSu
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/layout/ParentLayout';
 import { useFocusStore } from '@/store/useFocusStore';
+import { apiRequest } from '@/lib/api';
 import { COPY } from '@/constants/copy';
 import {
   UploadCloud,
@@ -28,6 +29,11 @@ export default function ParentOnboardingPage() {
   const [isParsingSyllabus, setIsParsingSyllabus] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [executionMode, setExecutionMode] = useState<'study' | 'revision'>('study');
+  
+  // Child context state
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
   
   // Accordion state
   const [expandedSubjectId, setExpandedSubjectId] = useState<number | null>(null);
@@ -76,12 +82,43 @@ export default function ParentOnboardingPage() {
     }
   };
 
+  const loadChildren = async () => {
+    try {
+      const data = await apiRequest('/api/parents/kids/');
+      setChildren(data);
+      // Auto-select if there is an activeChildId in localStorage
+      if (typeof window !== 'undefined') {
+        const active = localStorage.getItem('activeChildId');
+        if (active && active !== 'all') {
+          setSelectedChildId(active);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
+    loadChildren();
     loadSubjects();
     if (!userRoutine) {
       loadRoutine();
     }
   }, []);
+
+  const handleChildSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedChildId(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeChildId', val);
+      // Reload subjects for the new child
+      if (val) {
+        loadSubjects();
+      } else {
+        setSubjects([]);
+      }
+    }
+  };
 
   const handleDeleteSingleSubject = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation(); // prevent accordion from expanding
@@ -97,6 +134,10 @@ export default function ParentOnboardingPage() {
   };
 
   const processSyllabusFile = async (file: File) => {
+    if (!selectedChildId) {
+      alert("Please select a child profile first to assign this syllabus.");
+      return;
+    }
     if (!newSubjectName.trim()) {
       alert("Please type a Subject Name before uploading the syllabus.");
       return;
@@ -149,7 +190,7 @@ export default function ParentOnboardingPage() {
           subject_id: sub.id,
           daily_hours: dailyHours,
           weekend_warrior: weekendWarrior,
-          target_exam_date: finishBy
+          target_exam_date: executionMode === 'revision' ? finishBy : undefined
         });
       }
       router.push('/parent/dashboard'); 
@@ -169,25 +210,47 @@ export default function ParentOnboardingPage() {
 
   return (
     <ParentLayout>
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100 relative overflow-hidden flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors p-6">
+        {/* Decorative blobs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+        
+        <div className="relative z-10 w-full flex-1">
         {/* Header Title */}
-        <div className="space-y-1 mb-2">
-          <h1 className="text-2xl md:text-3xl font-bold text-textPrimary dark:text-slate-100 tracking-tight">
+        <div className="space-y-1 mb-2 relative z-10">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
             {COPY.onboarding.heading}
           </h1>
-          <p className="text-sm text-textSecondary dark:text-slate-400 font-medium">
+          <p className="text-sm text-slate-600 font-medium">
             {COPY.onboarding.subheading}
           </p>
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 relative z-10">
           
           {/* Left Column (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
             
             {/* Subject Name Input + Upload */}
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h2 className="text-base font-bold text-textPrimary dark:text-slate-100">
+            <div className="bg-white/90 backdrop-blur-md rounded-[32px] border-4 border-orange-100 shadow-sm p-6 space-y-4">
+              <h2 className="text-base font-extrabold text-slate-900 mb-2">
+                0. Select Child
+              </h2>
+              <select
+                value={selectedChildId}
+                onChange={handleChildSelect}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium mb-4"
+              >
+                <option value="">-- Choose a Child --</option>
+                {children.map((child: any) => (
+                  <option key={child.id} value={child.id}>
+                    {child.username}
+                  </option>
+                ))}
+              </select>
+
+              <h2 className="text-base font-extrabold text-slate-900 pt-2">
                 1. Name Your Subject
               </h2>
               <input
@@ -199,7 +262,7 @@ export default function ParentOnboardingPage() {
               />
 
               <div className="pt-2">
-                <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 mb-2">
+                <h2 className="text-base font-extrabold text-slate-900 mb-2">
                   2. Select Difficulty
                 </h2>
                 <select
@@ -214,7 +277,7 @@ export default function ParentOnboardingPage() {
               </div>
 
               <div className="pt-2">
-                <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 mb-2">
+                <h2 className="text-base font-extrabold text-slate-900 mb-2">
                   3. Upload Syllabus PDF
                 </h2>
                 <div
@@ -236,7 +299,7 @@ export default function ParentOnboardingPage() {
                     Drag your PDF here or click below to upload. The AI will extract modules.
                   </p>
 
-                  <label className="cursor-pointer py-2.5 px-6 bg-indigo text-white font-semibold text-sm rounded-xl hover:bg-indigo-dark transition-all shadow-sm active:scale-95 inline-flex items-center space-x-2">
+                  <label className="cursor-pointer py-2.5 px-6 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-orange-500/30 hover:opacity-95 transition-all inline-flex items-center space-x-2">
                     <input
                       type="file"
                       accept=".txt,.pdf"
@@ -249,7 +312,7 @@ export default function ParentOnboardingPage() {
                   </label>
                   
                   {isParsingSyllabus && (
-                    <div className="mt-4 flex items-center space-x-2 text-xs font-semibold text-indigo animate-pulse">
+                    <div className="mt-4 flex items-center space-x-2 text-xs font-semibold text-orange-500 animate-pulse">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>AI is extracting modules & topics...</span>
                     </div>
@@ -259,8 +322,8 @@ export default function ParentOnboardingPage() {
             </div>
 
             {/* Step 4: Timetable Details */}
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h2 className="text-base font-bold text-textPrimary dark:text-slate-100 flex items-center justify-between">
+            <div className="bg-white/90 backdrop-blur-md rounded-[32px] border-4 border-orange-100 shadow-sm p-6 space-y-4">
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center justify-between">
                 <span>4. Configure Availability</span>
                 {userRoutine && (
                   <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full uppercase tracking-wider">
@@ -395,34 +458,64 @@ export default function ParentOnboardingPage() {
                   </button>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wider">Exam Date</label>
-                  <input
-                    type="date"
-                    value={finishBy}
-                    onChange={(e) => setFinishBy(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl text-sm font-medium"
-                  />
+              
+              <div className="pt-2 border-t border-orange-100">
+                <h2 className="text-base font-extrabold text-slate-900 mb-3">5. Select Execution Mode</h2>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <button
+                    onClick={() => setExecutionMode('study')}
+                    className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                      executionMode === 'study'
+                        ? 'border-orange-500 bg-orange-50/50 shadow-sm'
+                        : 'border-slate-100 bg-white hover:border-orange-200'
+                    }`}
+                  >
+                    <div className="font-bold text-sm text-slate-900 mb-1">📚 Study Mode</div>
+                    <div className="text-[10px] text-slate-500 leading-tight">Spread learning across normal daily free gaps.</div>
+                  </button>
+                  <button
+                    onClick={() => setExecutionMode('revision')}
+                    className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                      executionMode === 'revision'
+                        ? 'border-orange-500 bg-orange-50/50 shadow-sm'
+                        : 'border-slate-100 bg-white hover:border-orange-200'
+                    }`}
+                  >
+                    <div className="font-bold text-sm text-slate-900 mb-1">⚡ Revision Mode</div>
+                    <div className="text-[10px] text-slate-500 leading-tight">Compress topic durations tightly to meet a hard deadline.</div>
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wider">Daily Hours</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={dailyHours}
-                    onChange={(e) => setDailyHours(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 rounded-xl text-sm font-medium"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Daily Hours</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={dailyHours}
+                      onChange={(e) => setDailyHours(Number(e.target.value))}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-orange-400 focus:outline-none transition-all"
+                    />
+                  </div>
+                  {executionMode === 'revision' && (
+                    <div className="animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Target Exam Date</label>
+                      <input
+                        type="date"
+                        value={finishBy}
+                        onChange={(e) => setFinishBy(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-orange-300 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-orange-400 focus:outline-none transition-all"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || subjects.length === 0}
-                className="w-full py-3.5 mt-2 bg-textPrimary dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl shadow-md disabled:opacity-50 flex items-center justify-center space-x-2 transition-all hover:bg-slate-800 cursor-pointer"
+                className="w-full py-3.5 mt-2 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-extrabold rounded-2xl shadow-lg shadow-orange-500/30 hover:opacity-95 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
               >
                 {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                 <span>{isGenerating ? 'Generating Schedule...' : 'Generate AI Schedule'}</span>
@@ -432,11 +525,11 @@ export default function ParentOnboardingPage() {
 
           {/* Right Column: Extracted Subjects */}
           <div className="lg:col-span-7">
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center space-x-2 text-textPrimary dark:text-slate-100">
-                  <BookOpen className="w-5 h-5 text-indigo" />
-                  <h3 className="font-bold text-base">Parsed Subjects & Modules</h3>
+            <div className="bg-white/90 backdrop-blur-md rounded-[32px] border-4 border-orange-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
+              <div className="p-5 border-b border-orange-100 flex items-center justify-between bg-white/50">
+                <div className="flex items-center space-x-2 text-slate-900">
+                  <BookOpen className="w-5 h-5 text-orange-500" />
+                  <h3 className="font-extrabold text-base">Parsed Subjects & Modules</h3>
                 </div>
               </div>
 
@@ -510,7 +603,9 @@ export default function ParentOnboardingPage() {
             </div>
           </div>
         </div>
-
+      </div>
+      </div>
+      
       {/* Overflow Modal */}
       {overflowData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

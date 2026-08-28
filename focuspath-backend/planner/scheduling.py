@@ -13,10 +13,9 @@ import os
 
 try:
     import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    from utils.ai import get_random_gemini_key
 except ImportError:
     pass
-
 SYLLABUS_EXTRACTION_PROMPT = """
 You are an expert academic data extractor. Your objective is to analyze a raw college syllabus and convert it into a strict JSON payload.
 
@@ -52,6 +51,7 @@ You must return ONLY valid JSON. Do not wrap the JSON in markdown formatting blo
 """
 
 def extract_syllabus_to_json(llama_parse_markdown):
+    genai.configure(api_key=get_random_gemini_key())
     # Force Gemini to output raw JSON without markdown blocks
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",

@@ -38,7 +38,6 @@ export interface StudySession {
   is_completed: boolean;
   tab_switch_count: number;
   focus_score: number;
-  plan_type?: string;
 }
 
 // "HH:MM AM/PM" (12h) formatter for the UI timeRange.
@@ -75,7 +74,6 @@ export function sessionToTimeBlock(session: StudySession): TimeBlock {
     type: status === 'completed' ? 'completed' : status === 'active' ? 'active' : 'default',
     dayIndex: (startDt.getDay() + 6) % 7, // Mon=0 .. Sun=6
     dateKey: session.date,
-    plan_type: session.plan_type,
   };
 }
 
@@ -127,7 +125,7 @@ export async function deleteSubject(subjectId: number): Promise<void> {
 // =========================================================================
 
 export interface Task {
-  id: number;
+  id: string | number;
   title: string;
   description: string | null;
   start_time: string;
@@ -152,14 +150,34 @@ export function taskToTimeBlock(task: any): any { return {} as any; }
 export function timeBlockToTaskPayload(block: any): any { return {} as any; }
 
 export async function listTasks(): Promise<any[]> { return []; }
-export async function createTask(p: any): Promise<any> { return {} as any; }
-export async function updateTask(id: number, p: any): Promise<any> { return {} as any; }
-export async function deleteTask(id: number): Promise<any> { return {} as any; }
-export async function carryOverOverdue(): Promise<any> { return {} as any; }
+export async function createSession(payload: Partial<StudySession>): Promise<StudySession> {
+  return apiRequest<StudySession>('/api/planner/sessions/', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function deleteSession(id: number): Promise<void> {
+  return apiRequest<void>(`/api/planner/sessions/${id}/`, { method: 'DELETE' });
+}
+
+export const updateTask = async (taskId: string | number, updates: any) => {
+  return apiRequest(`/api/planner/tasks/${taskId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+};
+
+export const carryOverOverdue = async (childId?: string) => {
+  // Append child_id if managing a specific kid, otherwise hit the adult/default endpoint
+  const url = childId 
+      ? `/api/planner/sessions/carry_over/?child_id=${childId}` 
+      : `/api/planner/sessions/carry_over/`;
+
+  return apiRequest(url, {
+      method: 'POST',
+  });
+};
 export async function rebuildSchedule(): Promise<any> { return {} as any; }
 export async function acceptRebuild(d: any): Promise<any> { return {} as any; }
-
-export async function askPlannerAssistant(query: string, mode: string, history: any[]): Promise<string> {
+export async function askPlannerAssistant(query: string, mode: string, history: any[]): Promise<{ reply: string, action?: string, error?: boolean }> {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const token = typeof window !== 'undefined' ? getCookie('accessToken') || localStorage.getItem('accessToken') : null;
   
@@ -173,11 +191,18 @@ export async function askPlannerAssistant(query: string, mode: string, history: 
   });
   
   if (!res.ok) {
-    throw new Error('Failed to reach assistant');
+    let msg = 'Failed to reach assistant';
+    try {
+      const errData = await res.json();
+      if (errData.reply) return errData;
+      if (errData.error === 'rate_limit' || errData.message) msg = errData.message || msg;
+      else if (errData.error) msg = String(errData.error);
+    } catch (e) {}
+    return { error: true, reply: msg || "The AI is currently resting. Please try again later." };
   }
   
   const data = await res.json();
-  return data.reply;
+  return data;
 }
 
 export async function fetchUserRoutine(): Promise<any> {

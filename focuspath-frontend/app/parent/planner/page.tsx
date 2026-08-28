@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { mutate } from 'swr';
 import ParentLayout from '@/components/layout/ParentLayout';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
 import { TimeBlock } from '@/services/focusApi';
 import { apiRequest } from '@/lib/api';
-import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteTask, timeBlockToTaskPayload, updateTask, createTask } from '@/lib/plannerApi';
+import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteSession, createSession } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Circle,
@@ -65,6 +66,9 @@ export default function ParentPlannerPage() {
   // real focus/study metrics; 0 until the student actually studies & marks work done
   const [analytics, setAnalytics] = useState<{ avg_focus_score: number; sessions: number } | null>(null);
 
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+
   const loadBlocks = async () => {
     try {
       const sessions = await listSessions();
@@ -75,20 +79,36 @@ export default function ParentPlannerPage() {
   };
 
   useEffect(() => {
+    apiRequest('/api/parents/kids/').then((data: any[]) => {
+      setChildren(data);
+      if (data.length > 0) {
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('activeChildId') : null;
+        const defaultId = stored && stored !== 'all' ? stored : String(data[0].id);
+        setSelectedChildId(defaultId);
+        if (typeof window !== 'undefined') localStorage.setItem('activeChildId', defaultId);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!selectedChildId) return;
+
     loadBlocks();
     apiRequest<{ avg_focus_score: number; sessions: number }>('/api/analytics/adult/')
       .then((a) => setAnalytics({ avg_focus_score: a.avg_focus_score, sessions: a.sessions }))
       .catch(() => setAnalytics(null));
     // reload the timetable whenever the user returns to this tab, so a freshly
     // generated plan shows up in the day/week/month views without a manual refresh
-    const onFocus = () => loadBlocks();
+    const onFocus = () => {
+      if (selectedChildId) loadBlocks();
+    };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
     return () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
     };
-  }, []);
+  }, [selectedChildId]);
 
   // toggle a block's completion and persist it — completion only ever reflects a real student action
   const toggleComplete = async (block: TimeBlock, e: React.MouseEvent) => {
@@ -134,6 +154,8 @@ export default function ParentPlannerPage() {
 
   // delete the whole syllabus plan (empties the timetable)
   const handleClearAll = async () => {
+    const childName = children.find(c => String(c.id) === selectedChildId)?.username || 'this child';
+    if (!window.confirm(`Delete ALL syllabus and sessions for ${childName}? This cannot be undone.`)) return;
     try {
       await clearSchedule();
       await loadBlocks();
@@ -171,6 +193,13 @@ export default function ParentPlannerPage() {
     return { hour: String(h12).padStart(2, '0'), min: m[2], ap };
   };
 
+  const to24h = (h: string, m: string, ap: string) => {
+    let hour = parseInt(h, 10);
+    if (ap === 'PM' && hour < 12) hour += 12;
+    if (ap === 'AM' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${m}:00`;
+  };
+
   // open the modal to add a brand-new block
   const openAddModal = () => {
     setEditingBlock(null);
@@ -200,7 +229,7 @@ export default function ParentPlannerPage() {
   const handleDeleteBlock = async (block: TimeBlock, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await deleteTask(Number(block.id));
+      await deleteSession(Number(block.id));
       await loadBlocks();
     } catch {
       // ignore; row stays if delete fails
@@ -232,37 +261,36 @@ export default function ParentPlannerPage() {
   const handleSaveBlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!blockTitle.trim()) return;
-    // compose the 12-hour range the payload mapper understands
-    const blockTime = `${startHour}:${startMin} ${startAmPm} - ${endHour}:${endMin} ${endAmPm}`;
-    // build the datetimes/title from the modal input (reuse the day of the block being edited)
-    const payload = timeBlockToTaskPayload({
-      timeRange: blockTime,
-      title: blockTitle.trim(),
-      subtitle: blockSubtitle.trim() || 'Custom session',
-      status: 'upcoming',
-      type: blockType,
-      dayIndex: editingBlock?.dayIndex ?? selectedDayIndex,
-    });
+    
+    const targetDayIndex = editingBlock?.dayIndex ?? selectedDayIndex;
+    const targetDay = days.find(d => d.index === targetDayIndex) || days[0];
+    
+    const payload = {
+      subject_name: blockTitle.trim(),
+      topic_name: blockSubtitle.trim() || 'Custom session',
+      date: targetDay.dateKey,
+      start_time: to24h(startHour, startMin, startAmPm),
+      end_time: to24h(endHour, endMin, endAmPm),
+    };
+    
     try {
       if (editingBlock) {
         // edit/reschedule an existing block
-        await updateTask(Number(editingBlock.id), {
-          title: payload.title,
-          description: payload.description,
-          start_time: payload.start_time,
-          end_time: payload.end_time,
-        });
+        await updateSession(Number(editingBlock.id), payload);
       } else {
-        await createTask(payload);
+        await createSession(payload);
       }
+      mutate('/api/planner/sessions/');
       await loadBlocks();
-    } catch {
-      // ignore save errors for now; modal simply closes
+      
+      setEditingBlock(null);
+      setBlockTitle('');
+      setBlockSubtitle('');
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error("Error saving block:", error.data || error.message || error);
+      // Modal stays open so the user can correct validation errors
     }
-    setEditingBlock(null);
-    setBlockTitle('');
-    setBlockSubtitle('');
-    setIsModalOpen(false);
   };
 
   // one schedule row (time · subject · actions), reused by the day and week views
@@ -351,9 +379,31 @@ export default function ParentPlannerPage() {
             </p>
           </div>
 
-          {/* Action Buttons: Upload Syllabus + Week / Month Toggle */}
-          <div className="flex items-center space-x-3 self-start sm:self-auto">
-            
+          {/* Action Buttons row */}
+          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+
+            {/* Child Selector Dropdown */}
+            {children.length > 0 && (
+              <div className="relative">
+                <select
+                  value={selectedChildId ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedChildId(val);
+                    if (typeof window !== 'undefined') localStorage.setItem('activeChildId', val);
+                  }}
+                  className="appearance-none pl-3 pr-8 py-2 bg-white dark:bg-slate-900 border border-border dark:border-slate-700 rounded-xl text-xs font-bold text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/40 cursor-pointer shadow-sm"
+                >
+                  {children.map((child: any) => (
+                    <option key={child.id} value={String(child.id)}>
+                      {child.username}
+                    </option>
+                  ))}
+                </select>
+                <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 rotate-90 pointer-events-none" />
+              </div>
+            )}
+
             {/* Add Subject Link Button */}
             <Link
               href="/parent/onboarding"
@@ -391,6 +441,21 @@ export default function ParentPlannerPage() {
             </div>
           </div>
         </div>
+
+
+
+        {blocks.length === 0 && selectedChildId ? (
+          <div className="flex flex-col items-center justify-center text-center py-20 space-y-3 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CalendarX className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              No timetable found for {children.find(c => String(c.id) === selectedChildId)?.username || 'Child'}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+              Click <span className="font-semibold text-indigo">+ Add Subject</span> to upload a syllabus and build their study plan.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
 
         {/* 7-Day Date Strip — Day view only */}
         {viewMode === 'day' && (
@@ -578,6 +643,9 @@ export default function ParentPlannerPage() {
             </div>
           );
         })()}
+
+          </div>
+        )}
 
         {/* Bottom Wide Panel: Weekly Cognitive Load */}
         <div className="bg-indigo-light/60 dark:bg-indigo-950/30 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-card space-y-6">

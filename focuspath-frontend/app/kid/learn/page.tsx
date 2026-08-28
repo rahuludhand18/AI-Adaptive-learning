@@ -211,12 +211,29 @@ const AGE_GROUP_LEVEL_HINT: Record<string, string> = {
 
 export default function KidLearnPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user: authUser } = useAuthStore();
+  const [activeChild, setActiveChild] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('activeChildProfile');
+      if (stored) {
+        try {
+          setActiveChild(JSON.parse(stored));
+        } catch (e) {}
+      }
+    }
+  }, []);
+
+  const user = activeChild || authUser;
+
+  console.log("Active Child Profile:", user);
 
   // State for Catalog
   const [levels, setLevels] = useState<Level[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [allMappedTopics, setAllMappedTopics] = useState<Topic[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
 
   // Selection Drill-Down State
@@ -233,6 +250,7 @@ export default function KidLearnPage() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizAnswered, setQuizAnswered] = useState<number | null>(null);
   const [todayCompletedCount, setTodayCompletedCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   // Load levels on mount
   useEffect(() => {
@@ -245,6 +263,9 @@ export default function KidLearnPage() {
   }, []);
 
   const pickLevelForAge = (levelList: Level[]): Level => {
+    if (user?.grade_level) {
+      return { id: 999, name: user.grade_level, icon: '🎓' };
+    }
     const hint = user?.age_group ? AGE_GROUP_LEVEL_HINT[user.age_group] : null;
     if (hint) {
       const match = levelList.find((l) => l.name.toLowerCase().includes(hint.toLowerCase()));
@@ -254,48 +275,102 @@ export default function KidLearnPage() {
   };
 
   useEffect(() => {
-    apiRequest<Level[]>('/api/content/levels/')
-      .then((res) => {
-        const list = res && res.length > 0 ? res : FALLBACK_LEVELS;
-        const chosen = pickLevelForAge(list);
-        setLevels(list);
-        setSelectedLevel(chosen);
-        loadSubjectsForLevel(chosen.id);
-      })
-      .catch(() => {
-        const chosen = pickLevelForAge(FALLBACK_LEVELS);
-        setLevels(FALLBACK_LEVELS);
-        setSelectedLevel(chosen);
-        loadSubjectsForLevel(chosen.id);
-      });
+    import('@/lib/plannerApi').then(({ listSubjects }) => {
+      setLoading(true);
+      listSubjects()
+        .then((plannerSubjects) => {
+          if (plannerSubjects && plannerSubjects.length > 0) {
+            // Populate levels to fix empty Grade Level pill
+            const chosenLevel = pickLevelForAge(FALLBACK_LEVELS);
+            setLevels(FALLBACK_LEVELS);
+            setSelectedLevel(chosenLevel);
+
+            const mappedSubjects: Subject[] = plannerSubjects.map((s) => ({
+              id: s.id,
+              level: chosenLevel.id,
+              name: s.name,
+              iconName: 'BookOpen',
+              colorClass: s.color_code, // Store hex code here
+            }));
+            
+            const mappedTopics: Topic[] = plannerSubjects.flatMap(s => 
+              s.modules.flatMap(m => 
+                m.topics.map(t => ({
+                  id: t.id,
+                  subject: s.id,
+                  title: t.name,
+                  summary: m.title,
+                  videoCount: 1,
+                }))
+              )
+            );
+            
+            setSubjects(mappedSubjects);
+            setAllMappedTopics(mappedTopics);
+            // Auto-select the first subject to skip the level view
+            if (mappedSubjects.length > 0) {
+              setSelectedSubject(mappedSubjects[0]);
+              setTopics(mappedTopics.filter(t => t.subject === mappedSubjects[0].id));
+            }
+          } else {
+            const gradeLevel = user?.grade_level || user?.profile?.grade_level || user?.grade || '';
+            if (gradeLevel.toLowerCase() === 'kindergarten') {
+              // Fallback to demo data for Kindergarten
+              const chosen = pickLevelForAge(FALLBACK_LEVELS);
+              setLevels(FALLBACK_LEVELS);
+              setSelectedLevel(chosen);
+              loadSubjectsForLevel(chosen.id);
+            } else {
+              // Empty syllabus state for Grade 1 to 6
+              const chosen = pickLevelForAge(FALLBACK_LEVELS);
+              setLevels([chosen]);
+              setSelectedLevel(chosen);
+              setSubjects([]);
+              setAllMappedTopics([]);
+              setTopics([]);
+            }
+          }
+        })
+        .catch(() => {
+          const gradeLevel = user?.grade_level || user?.profile?.grade_level || user?.grade || '';
+          if (gradeLevel.toLowerCase() === 'kindergarten') {
+            // Fallback to demo data for Kindergarten
+            const chosen = pickLevelForAge(FALLBACK_LEVELS);
+            setLevels(FALLBACK_LEVELS);
+            setSelectedLevel(chosen);
+            loadSubjectsForLevel(chosen.id);
+          } else {
+            // Empty syllabus state for Grade 1 to 6
+            const chosen = pickLevelForAge(FALLBACK_LEVELS);
+            setLevels([chosen]);
+            setSelectedLevel(chosen);
+            setSubjects([]);
+            setAllMappedTopics([]);
+            setTopics([]);
+          }
+        })
+        .finally(() => setLoading(false));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.age_group]);
 
   const loadSubjectsForLevel = async (levelId: number) => {
-    try {
-      const res = await apiRequest<Subject[]>(`/api/content/subjects/?level=${levelId}`);
-      if (res && res.length > 0) {
-        setSubjects(res);
-      } else {
-        setSubjects(FALLBACK_SUBJECTS[levelId] || FALLBACK_SUBJECTS[3] || []);
-      }
-    } catch {
-      setSubjects(FALLBACK_SUBJECTS[levelId] || FALLBACK_SUBJECTS[3] || []);
-    }
+    setSubjects(FALLBACK_SUBJECTS[levelId] || FALLBACK_SUBJECTS[3] || []);
   };
 
   const loadTopicsForSubject = async (subjectId: number) => {
-    try {
-      const res = await apiRequest<Topic[]>(`/api/content/topics/?subject=${subjectId}`);
-      if (res && res.length > 0) {
-        setTopics(res);
-      } else {
+    const foundTopics = allMappedTopics.filter(t => t.subject === subjectId);
+    if (foundTopics.length > 0) {
+      setTopics(foundTopics);
+    } else {
+      const gradeLevel = user?.grade_level || user?.profile?.grade_level || user?.grade || '';
+      if (gradeLevel.toLowerCase() === 'kindergarten') {
         setTopics(FALLBACK_TOPICS[subjectId] || [
           { id: subjectId * 10 + 1, subject: subjectId, title: 'Core Lesson Fundamentals', summary: 'Essential concepts made easy and engaging.', videoCount: 1 }
         ]);
+      } else {
+        setTopics([]);
       }
-    } catch {
-      setTopics(FALLBACK_TOPICS[subjectId] || []);
     }
   };
 
@@ -303,7 +378,12 @@ export default function KidLearnPage() {
     try {
       let res = await apiRequest<Video[]>(`/api/content/videos/?topic=${topic.id}`);
       if (!res || res.length === 0) {
-        const query = encodeURIComponent(topic.title);
+        const chapterName = topic.title.replace(/\s*\(Part \d+\)\s*/g, '').trim();
+        const subjectName = selectedSubject?.name || '';
+        const gradeLevel = user?.grade_level || user?.profile?.grade_level || user?.grade || '6';
+        const searchQuery = `Class ${gradeLevel} ${subjectName} ${chapterName} NCERT in english`;
+        
+        const query = encodeURIComponent(searchQuery);
         res = await apiRequest<Video[]>(`/api/learn/videos/?q=${query}`);
         res = res.map((v, i) => ({ ...v, id: topic.id * 1000 + i }));
       }
@@ -427,7 +507,9 @@ export default function KidLearnPage() {
                   {selectedLevel && (
                     <>
                       <ChevronRight className="h-3 w-3 text-emerald-300 dark:text-emerald-700" />
-                      <span className="text-emerald-700 dark:text-emerald-300">{selectedLevel.name.split(' ')[0]}</span>
+                      <span className="text-emerald-700 dark:text-emerald-300">
+                        {(user?.grade_level || user?.profile?.grade_level || user?.grade || 'STUDENT').toUpperCase()}
+                      </span>
                     </>
                   )}
                   {selectedSubject && (
@@ -482,37 +564,7 @@ export default function KidLearnPage() {
           </div>
         </div>
 
-        {/* 2. Grade Level Selector Pills (Chunky Tabs with Age Cues) */}
-        <div className="rounded-[32px] border-2 border-emerald-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 shadow-sm">
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 px-2 whitespace-nowrap">
-              Grade Level:
-            </span>
-            {levels.map((lvl, idx) => {
-              const isActive = selectedLevel?.id === lvl.id;
-              const levelColors = [
-                'bg-gradient-to-r from-orange-400 to-amber-500 text-white shadow-lg shadow-orange-500/25 ring-4 ring-orange-400/30',
-                'bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg shadow-sky-500/25 ring-4 ring-sky-400/30',
-                'bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-lg shadow-emerald-500/25 ring-4 ring-emerald-400/30',
-                'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-purple-500/25 ring-4 ring-purple-400/30',
-              ];
-              return (
-                <button
-                  key={lvl.id}
-                  onClick={() => handleSelectLevel(lvl)}
-                  className={`px-5 py-3 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2.5 ${
-                    isActive
-                      ? levelColors[idx % 4] + ' scale-105'
-                      : 'bg-emerald-50/70 dark:bg-slate-800 hover:bg-emerald-100 text-slate-700 dark:text-slate-300 border-2 border-emerald-200/80 dark:border-slate-700'
-                  }`}
-                >
-                  <span className="text-base animate-kid-bob">{lvl.icon || '🌱'}</span>
-                  <span>{lvl.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+
 
         {/* 3. Main Bento 12-Column Grid Area */}
         <div className="grid grid-cols-12 gap-5">
@@ -740,27 +792,37 @@ export default function KidLearnPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  {subjects.map((subj, idx) => {
-                    const subjectThemes = [
-                      { border: 'border-sky-300 dark:border-sky-800', bg: 'bg-sky-50/90 dark:bg-slate-800', iconBg: 'bg-sky-400 text-white', hoverBorder: 'hover:border-sky-400', text: 'group-hover:text-sky-600' },
-                      { border: 'border-emerald-300 dark:border-emerald-800', bg: 'bg-emerald-50/90 dark:bg-slate-800', iconBg: 'bg-emerald-500 text-white', hoverBorder: 'hover:border-emerald-400', text: 'group-hover:text-emerald-600' },
-                      { border: 'border-pink-300 dark:border-pink-800', bg: 'bg-pink-50/90 dark:bg-slate-800', iconBg: 'bg-pink-400 text-white', hoverBorder: 'hover:border-pink-400', text: 'group-hover:text-pink-600' },
-                      { border: 'border-amber-300 dark:border-amber-800', bg: 'bg-amber-50/90 dark:bg-slate-800', iconBg: 'bg-amber-400 text-amber-950', hoverBorder: 'hover:border-amber-400', text: 'group-hover:text-amber-600' },
-                      { border: 'border-purple-300 dark:border-purple-800', bg: 'bg-purple-50/90 dark:bg-slate-800', iconBg: 'bg-purple-500 text-white', hoverBorder: 'hover:border-purple-400', text: 'group-hover:text-purple-600' },
-                    ];
-                    const theme = subjectThemes[idx % 5];
+                  {subjects.map((subj) => {
+                    const c = subj.colorClass || '#4F46E5';
                     return (
                       <div
                         key={subj.id}
                         onClick={() => handleSelectSubject(subj)}
-                        className={`group rounded-[28px] border-2 ${theme.border} ${theme.bg} p-5 shadow-xs ${theme.hoverBorder} hover:scale-105 transition-all duration-200 cursor-pointer flex items-center justify-between`}
+                        className="group rounded-[28px] border-2 bg-white dark:bg-slate-850 p-5 shadow-xs hover:scale-105 transition-all duration-200 cursor-pointer flex items-center justify-between"
+                        style={{ borderColor: `${c}40` }}
+                        onMouseEnter={(e) => { 
+                          e.currentTarget.style.backgroundColor = `${c}1A`; 
+                          e.currentTarget.style.borderColor = c; 
+                          // Change text color of h3 on hover
+                          const h3 = e.currentTarget.querySelector('h3');
+                          if (h3) h3.style.color = c;
+                        }}
+                        onMouseLeave={(e) => { 
+                          e.currentTarget.style.backgroundColor = ''; 
+                          e.currentTarget.style.borderColor = `${c}40`; 
+                          const h3 = e.currentTarget.querySelector('h3');
+                          if (h3) h3.style.color = '';
+                        }}
                       >
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl ${theme.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:animate-kid-wiggle transition-transform shadow-md`}>
+                          <div 
+                            className="w-12 h-12 rounded-2xl text-white flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:animate-kid-wiggle transition-transform shadow-md"
+                            style={{ backgroundColor: c }}
+                          >
                             {getSubjectIcon(subj.name)}
                           </div>
                           <div>
-                            <h3 className={`text-base font-extrabold text-slate-900 dark:text-slate-100 ${theme.text} transition-colors`}>
+                            <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 transition-colors">
                               {subj.name}
                             </h3>
                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">
@@ -769,7 +831,11 @@ export default function KidLearnPage() {
                           </div>
                         </div>
 
-                        <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-700 group-hover:bg-orange-500 group-hover:text-white flex items-center justify-center text-slate-400 dark:text-slate-300 transition-all shrink-0 shadow-xs">
+                        <div 
+                           className="w-8 h-8 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-300 transition-all shrink-0 shadow-xs"
+                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = c; e.currentTarget.style.color = 'white'; }}
+                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = ''; }}
+                        >
                           <ChevronRight className="h-4 w-4" />
                         </div>
                       </div>
@@ -801,39 +867,86 @@ export default function KidLearnPage() {
                 </div>
 
                 {/* Topic Cards Grid */}
-                <div className="grid grid-cols-1 gap-4">
-                  {filteredTopics.map((top) => (
-                    <div
-                      key={top.id}
-                      onClick={() => handleSelectTopic(top)}
-                      className="group rounded-[28px] border-2 border-emerald-200 dark:border-slate-800 bg-emerald-50/50 dark:bg-slate-850 p-5 shadow-xs hover:border-emerald-400 hover:scale-102 transition-all duration-200 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5 group-hover:animate-kid-wiggle shadow-md">
-                          <BookOpen className="h-6 w-6" />
-                        </div>
+                <div className="space-y-8">
+                  {(() => {
+                    const groupedTopics = filteredTopics.reduce((acc, top) => {
+                      const chapterName = top.title.replace(/\s*\(Part \d+\)\s*/g, '').trim();
+                      const unitName = top.summary || 'Other Topics';
+                      
+                      if (!acc[unitName]) {
+                        acc[unitName] = [];
+                      }
+                      
+                      // Ensure chapter appears only once per unit
+                      if (!acc[unitName].find(t => t.title.replace(/\s*\(Part \d+\)\s*/g, '').trim() === chapterName)) {
+                        acc[unitName].push({ ...top, title: chapterName });
+                      }
+                      
+                      return acc;
+                    }, {} as Record<string, typeof filteredTopics>);
 
-                        <div className="space-y-1">
-                          <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors">
-                            {top.title}
-                          </h3>
-                          <p className="text-xs font-bold text-slate-600 dark:text-slate-300 max-w-lg">
-                            {top.summary || 'Curated video lesson series designed for young learners.'}
-                          </p>
+                    return Object.entries(groupedTopics).map(([unitName, chapters]) => (
+                      <div key={unitName} className="space-y-4">
+                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-2 mb-2">
+                          {unitName}
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
+                          {chapters.map((top) => {
+                            const c = selectedSubject?.colorClass || '#4F46E5';
+                            return (
+                              <div
+                                key={top.id}
+                                onClick={() => handleSelectTopic(top)}
+                                className="group rounded-[28px] border-2 dark:border-slate-800 bg-white dark:bg-slate-850 p-5 shadow-xs transition-all duration-200 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                style={{ borderColor: `${c}40` }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = `${c}1A`; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+                              >
+                                <div className="flex items-start gap-4">
+                                  <div 
+                                    className="w-12 h-12 rounded-2xl text-white flex items-center justify-center shrink-0 mt-0.5 group-hover:animate-kid-wiggle shadow-md"
+                                    style={{ backgroundColor: c }}
+                                  >
+                                    <BookOpen className="h-6 w-6" />
+                                  </div>
+        
+                                  <div className="space-y-1">
+                                    <h3 
+                                      className="text-base font-bold text-slate-900 dark:text-slate-100 transition-colors"
+                                      style={{ color: c }}
+                                    >
+                                      {top.title}
+                                    </h3>
+                                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 max-w-lg">
+                                      {unitName}
+                                    </p>
+                                  </div>
+                                </div>
+        
+                                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                                  <span 
+                                    className="bg-white dark:bg-slate-800 border text-xs font-bold py-1 px-3.5 rounded-full"
+                                    style={{ borderColor: `${c}40`, color: c }}
+                                  >
+                                    {top.videoCount || 1} Video Lesson
+                                  </span>
+                                  <button 
+                                    className="text-white text-xs font-bold py-2 px-4 rounded-full shadow-sm flex items-center gap-1.5 transition-all"
+                                    style={{ backgroundColor: c }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                                  >
+                                    <span>Open</span>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                        <span className="bg-white dark:bg-slate-800 border border-emerald-200 dark:border-slate-700 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold py-1 px-3.5 rounded-full">
-                          {top.videoCount || 1} Video Lesson
-                        </span>
-                        <button className="bg-emerald-500 text-white text-xs font-extrabold py-2 px-4 rounded-full shadow-sm group-hover:bg-emerald-600 flex items-center gap-1.5">
-                          <span>Open</span>
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </div>
             )}
@@ -945,7 +1058,7 @@ export default function KidLearnPage() {
 
                 {selectedLevel && (
                   <span className="bg-amber-200 text-amber-950 border border-amber-300 text-xs font-extrabold py-1 px-3 rounded-full">
-                    {selectedLevel.name.split(' ')[0]}
+                    {user?.grade_level || user?.profile?.grade_level || user?.grade || 'Student'}
                   </span>
                 )}
               </div>

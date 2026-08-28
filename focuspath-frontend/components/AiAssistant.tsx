@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { askPlannerAssistant } from '@/lib/plannerApi';
+import { useSWRConfig } from 'swr';
 import { Bot, X, Send, GraduationCap, BookOpen, CalendarDays, UploadCloud } from 'lucide-react';
 
 type Tab = 'general' | 'syllabus' | 'planner';
@@ -47,10 +48,23 @@ export function AiAssistant() {
     setSending(true);
     try {
       // Send chat history (excluding the new user msg)
-      const reply = await askPlannerAssistant(q, current, messages);
-      push(current, { role: 'bot', text: reply });
-    } catch {
-      push(current, { role: 'bot', text: 'I could not reach your data right now. Please try again.' });
+      const data = await askPlannerAssistant(q, current, messages);
+      
+      if (data.error) {
+        push(current, { role: 'bot', text: data.reply });
+        return;
+      }
+      
+      push(current, { role: 'bot', text: data.reply });
+      
+      if (data.action === 'REFRESH_PLANNER') {
+        const { mutate } = require('swr');
+        mutate('/api/planner/sessions/');
+        window.dispatchEvent(new Event('refresh_planner'));
+      }
+    } catch (error: any) {
+      console.error("Chat API Error Details:", error);
+      push(current, { role: 'bot', text: 'Network error: Could not reach the planner assistant.' });
     } finally {
       setSending(false);
     }

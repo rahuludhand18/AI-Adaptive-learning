@@ -63,3 +63,12 @@ class Video(models.Model):
     def __str__(self):
         flag = 'approved' if self.is_approved else 'pending'
         return f"{self.title} [{flag}]"
+
+# Cache AI generated notes for a video
+class AINotes(models.Model):
+    video_id = models.CharField(max_length=20, unique=True, db_index=True)
+    notes_markdown = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"AI Notes for Video: {self.video_id}"

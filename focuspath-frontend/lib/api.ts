@@ -84,140 +84,151 @@ export async function apiRequest<T = any>(
     if (token) {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
-  }
-
-  const response = await fetch(url, {
-    headers: {
-      ...defaultHeaders,
-      ...headers,
-    },
-    ...restOptions,
-  });
-
-  // Handle 401 Unauthorized (exclude endpoints under /api/auth/ except for user profile)
-  if (response.status === 401 && (!endpoint.startsWith('/api/auth/') || endpoint === '/api/auth/profile/')) {
-    if (typeof window !== 'undefined') {
-      const refreshToken = getCookie('refreshToken') || localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((token) => {
-              const retryHeaders = {
-                ...defaultHeaders,
-                ...headers,
-                'Authorization': `Bearer ${token}`,
-              };
-              return fetch(url, {
-                headers: retryHeaders,
-                ...restOptions,
-              }).then((res) => {
-                if (!res.ok) throw new Error('Retry failed');
-                if (res.status === 204) return null as any;
-                return res.json();
-              });
-            })
-            .catch((err) => {
-              throw err;
-            });
-        }
-
-        isRefreshing = true;
-
-        try {
-          const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refresh: refreshToken }),
-          });
-
-          if (!refreshRes.ok) {
-            throw new Error('Refresh token expired');
-          }
-
-          const refreshData = await refreshRes.json();
-          const newAccess = refreshData.access;
-          const newRefresh = refreshData.refresh || refreshToken;
-
-          // Save new tokens
-          setCookie('accessToken', newAccess, 15);
-          setCookie('refreshToken', newRefresh, 15);
-          localStorage.setItem('accessToken', newAccess);
-          localStorage.setItem('refreshToken', newRefresh);
-
-          // Update Zustand store
-          const { useAuthStore } = await import('@/store/authStore');
-          const store = useAuthStore.getState();
-          if (store.user) {
-            store.setAuth(store.user, newAccess, newRefresh);
-          }
-
-          processQueue(null, newAccess);
-          isRefreshing = false;
-
-          // Retry original request
-          const retryHeaders = {
-            ...defaultHeaders,
-            ...headers,
-            'Authorization': `Bearer ${newAccess}`,
-          };
-          const retryRes = await fetch(url, {
-            headers: retryHeaders,
-            ...restOptions,
-          });
-
-          if (!retryRes.ok) {
-            const errorData = await retryRes.json().catch(() => ({}));
-            throw {
-              status: retryRes.status,
-              message: errorData.detail || 'Something went wrong',
-              code: errorData.code || null,
-            };
-          }
-          if (retryRes.status === 204) {
-            return null as any;
-          }
-          return retryRes.json();
-        } catch (refreshError) {
-          processQueue(refreshError, null);
-          isRefreshing = false;
-
-          // Clear credentials
-          eraseCookie('accessToken');
-          eraseCookie('refreshToken');
-          eraseCookie('user');
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-
-          const { useAuthStore } = await import('@/store/authStore');
-          useAuthStore.getState().logout();
-
-          window.location.href = '/auth/login?notice=parent_required';
-          throw {
-            status: 401,
-            message: 'Session expired. Please log in again.',
-          };
-        }
-      }
+    const childId = localStorage.getItem('activeChildId');
+    if (childId && childId !== 'all') {
+      defaultHeaders['X-Child-Id'] = childId;
     }
   }
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw {
-      status: response.status,
-      message: extractMessage(errorData),
-      code: errorData.code || null,
-      errors: errorData,
-    };
-  }
+  try {
+    const response = await fetch(url, {
+      headers: {
+        ...defaultHeaders,
+        ...headers,
+      },
+      ...restOptions,
+    });
 
-  if (response.status === 204) {
-    return null as any;
-  }
+    // Handle 401 Unauthorized (exclude endpoints under /api/auth/ except for user profile)
+    if (response.status === 401 && (!endpoint.startsWith('/api/auth/') || endpoint === '/api/auth/profile/')) {
+      if (typeof window !== 'undefined') {
+        const refreshToken = getCookie('refreshToken') || localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            })
+              .then((token) => {
+                const retryHeaders = {
+                  ...defaultHeaders,
+                  ...headers,
+                  'Authorization': `Bearer ${token}`,
+                };
+                return fetch(url, {
+                  headers: retryHeaders,
+                  ...restOptions,
+                }).then((res) => {
+                  if (!res.ok) throw new Error('Retry failed');
+                  return res.json();
+                });
+              })
+              .catch((err) => {
+                throw err;
+              });
+          }
 
-  return response.json();
+          isRefreshing = true;
+
+          try {
+            const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ refresh: refreshToken }),
+            });
+
+            if (!refreshRes.ok) {
+              throw new Error('Refresh token expired');
+            }
+
+            const refreshData = await refreshRes.json();
+            const newAccess = refreshData.access;
+            const newRefresh = refreshData.refresh || refreshToken;
+
+            // Save new tokens
+            setCookie('accessToken', newAccess, 15);
+            setCookie('refreshToken', newRefresh, 15);
+            localStorage.setItem('accessToken', newAccess);
+            localStorage.setItem('refreshToken', newRefresh);
+
+            // Update Zustand store
+            const { useAuthStore } = await import('@/store/authStore');
+            const store = useAuthStore.getState();
+            if (store.user) {
+              store.setAuth(store.user, newAccess, newRefresh);
+            }
+
+            processQueue(null, newAccess);
+            isRefreshing = false;
+
+            // Retry original request
+            const retryHeaders = {
+              ...defaultHeaders,
+              ...headers,
+              'Authorization': `Bearer ${newAccess}`,
+            };
+            const retryRes = await fetch(url, {
+              headers: retryHeaders,
+              ...restOptions,
+            });
+
+            if (!retryRes.ok) {
+              const errorData = await retryRes.json().catch(() => ({}));
+              throw {
+                status: retryRes.status,
+                message: errorData.detail || 'Something went wrong',
+                code: errorData.code || null,
+              };
+            }
+
+            return retryRes.json();
+          } catch (refreshError) {
+            processQueue(refreshError, null);
+            isRefreshing = false;
+
+            // Clear credentials
+            eraseCookie('accessToken');
+            eraseCookie('refreshToken');
+            eraseCookie('user');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+
+            const { useAuthStore } = await import('@/store/authStore');
+            useAuthStore.getState().logout();
+
+            window.location.href = '/auth/login?notice=parent_required';
+            throw {
+              status: 401,
+              message: 'Session expired. Please log in again.',
+            };
+          }
+        }
+      }
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const customError: any = new Error(extractMessage(errorData) || response.statusText || 'API Error');
+      customError.status = response.status;
+      customError.data = errorData;
+      customError.code = errorData.code || null;
+      throw customError;
+    }
+
+    if (response.status === 204) {
+      return null as any;
+    }
+
+    return response.json();
+  } catch (error: any) {
+    // If it's already an HTTP error we threw ourselves, rethrow it
+    if (error && error.status !== undefined) {
+      throw error;
+    }
+    
+    // Otherwise it's a true network failure (fetch rejected)
+    console.warn("Network Warning: Could not reach the backend.", error);
+    throw { message: "Backend server is unreachable. Please ensure Django is running.", status: 0 };
+  }
 }

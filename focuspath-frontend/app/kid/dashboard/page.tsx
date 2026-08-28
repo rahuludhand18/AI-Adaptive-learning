@@ -111,6 +111,8 @@ export default function KidDashboardPage() {
     },
   ];
 
+  const [networkError, setNetworkError] = useState(false);
+
   // load real star balance + streak on mount
   useEffect(() => {
     apiRequest<{ balance: number; streak_count: number }>('/api/rewards/wallet/')
@@ -118,7 +120,9 @@ export default function KidDashboardPage() {
         setStars(w.balance ?? 0);
         setStreak(w.streak_count ?? 0);
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (err.status === 0) setNetworkError(true);
+      });
   }, []);
 
   // Daily Puzzle Handler
@@ -148,6 +152,50 @@ export default function KidDashboardPage() {
       .then((res) => setStars(res.balance))
       .catch(() => {});
   };
+
+  if (networkError) {
+    return (
+      <KidLayout starsCount={stars}>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] relative z-10 m-6">
+          <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 rounded-2xl p-8 max-w-2xl w-full shadow-lg flex flex-col items-center text-center">
+            
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center text-red-500">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                Backend Connection Failed
+              </h2>
+            </div>
+            
+            <div className="font-mono text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-1 rounded-full mb-6">
+              Error Code: ERR_CONNECTION_REFUSED (Status 0)
+            </div>
+
+            <p className="text-slate-600 dark:text-slate-400 mb-6 font-medium">
+              Your Next.js frontend is running, but it cannot communicate with the Django backend. The server is either offline or encountering a fatal error.
+            </p>
+
+            <div className="w-full bg-slate-900 text-slate-300 p-5 rounded-xl text-sm font-mono mt-4 text-left space-y-2">
+              <div className="text-slate-400 border-b border-slate-700 pb-2 mb-2 font-bold uppercase text-[10px] tracking-wider">
+                Developer Troubleshooting Steps
+              </div>
+              <div>1. Check your Django terminal for a Python Traceback.</div>
+              <div>2. Resolve any database lock or syntax errors causing the crash.</div>
+              <div>3. Restart the server: <span className="text-emerald-400">python manage.py runserver</span></div>
+            </div>
+
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold px-6 py-2 rounded-xl mt-6 transition-colors shadow-sm cursor-pointer"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </KidLayout>
+    );
+  }
 
   return (
     <KidLayout starsCount={stars}>

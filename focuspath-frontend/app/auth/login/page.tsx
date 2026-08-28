@@ -74,15 +74,13 @@ function LoginContent() {
       // Save to Zustand
       setAuth(res.user, res.access, res.refresh);
 
-      // Redirect depending on user role — a real Kid account doesn't start its session
-      // until a parent taps the Morse pattern (see MorseGate below); a Parent account lands
-      // on the profile switcher (parent dashboard vs. previewing the child view).
-      if (res.user.role === 'ADULT') {
-        router.push('/adult/dashboard');
-      } else if (res.user.role === 'PARENT') {
-        router.push('/select-profile');
-      } else if (res.user.role === 'KID') {
+      const role = (res.user.role || '').toLowerCase();
+      if (role === 'parent' || role === 'adult') {
+        router.push('/parent/dashboard');
+      } else if (role === 'kid') {
         setAwaitingMorseGate(true);
+      } else {
+        router.push('/select-profile'); 
       }
     } catch (err: any) {
       if (err.status === 403 && err.code === 'account_locked') {

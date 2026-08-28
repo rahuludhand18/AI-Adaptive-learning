@@ -91,9 +91,16 @@ export default function AdultDashboardPage() {
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
   return (
-    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
-      <TopNav />
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100 relative overflow-hidden flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
+      {/* Decorative blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
 
+      <div className="z-10 w-full relative">
+        <TopNav />
+      </div>
+
+      <div className="z-10 w-full flex-1 relative">
       <PageContainer>
         {/* Morning / Evening View Switcher Banner */}
         <div className="flex items-center justify-between pb-2 border-b border-border dark:border-slate-800">
@@ -128,20 +135,22 @@ export default function AdultDashboardPage() {
           /* --- MORNING VIEW --- */
           <div className="space-y-6">
             {/* Header Info */}
-            <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-textPrimary dark:text-slate-100 tracking-tight">
-                {COPY.dashboardMorning.heading}
-              </h1>
-              <p className="text-sm text-textSecondary dark:text-slate-400 font-normal">
-                {COPY.dashboardMorning.subheading}
-              </p>
+            <div className="bg-gradient-to-r from-orange-400 to-orange-500 text-white rounded-[32px] p-8 shadow-lg shadow-orange-500/30 flex items-center justify-between mb-8">
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                  {COPY.dashboardMorning.heading}
+                </h1>
+                <p className="text-sm font-normal text-orange-50">
+                  {COPY.dashboardMorning.subheading}
+                </p>
+              </div>
             </div>
 
             {/* Row of 3 Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Card 1: Focus Score ProgressRing */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col items-center justify-between text-center min-h-[280px]">
-                <span className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider">
+              <div className="bg-cyan-50 border-cyan-400 rounded-[32px] border-4 shadow-sm p-6 flex flex-col items-center justify-between text-center min-h-[280px]">
+                <span className="text-xs font-bold text-cyan-600 uppercase tracking-wider">
                   {COPY.dashboardMorning.focusScoreTitle}
                 </span>
 
@@ -149,51 +158,51 @@ export default function AdultDashboardPage() {
                   <ProgressRing
                     value={analytics?.avg_focus_score ?? 0}
                     label={COPY.dashboardMorning.focusScoreStatus}
-                    color="#4F46E5"
+                    color="#06b6d4"
                     size={150}
                     strokeWidth={12}
                   />
                 </div>
 
-                <p className="text-xs text-textSecondary dark:text-slate-400 font-normal max-w-[200px]">
+                <p className="text-xs text-cyan-700 font-normal max-w-[200px]">
                   Average of your recent focus sessions.
                 </p>
               </div>
 
               {/* Card 2: Total Subjects Overview */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col items-center justify-center text-center min-h-[280px]">
-                <span className="text-xs font-bold text-textSecondary dark:text-slate-400 uppercase tracking-wider mb-4">
+              <div className="bg-rose-50 border-rose-400 rounded-[32px] border-4 shadow-sm p-6 flex flex-col items-center justify-center text-center min-h-[280px]">
+                <span className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-4">
                   Subject Overview
                 </span>
                 
-                <div className="w-24 h-24 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo flex items-center justify-center border-4 border-indigo-100 dark:border-indigo-800 mb-4">
+                <div className="w-24 h-24 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center border-4 border-rose-300 mb-4">
                   <span className="text-3xl font-black">{activeSubjects.length}</span>
                 </div>
                 
-                <h3 className="text-lg font-bold text-textPrimary dark:text-slate-100">
+                <h3 className="text-lg font-bold text-rose-600">
                   Active Subjects
                 </h3>
-                <p className="text-xs text-textSecondary dark:text-slate-400 font-medium max-w-[200px] mt-2">
+                <p className="text-xs text-rose-500 font-medium max-w-[200px] mt-2">
                   You are currently tracking and studying {activeSubjects.length} subjects.
                 </p>
                 <button
                   onClick={() => router.push('/adult/onboarding')}
-                  className="mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 rounded-xl transition-colors"
+                  className="mt-4 px-4 py-2 bg-rose-100 hover:bg-rose-200 text-xs font-bold text-rose-700 rounded-xl transition-colors cursor-pointer"
                 >
                   Manage Subjects
                 </button>
               </div>
 
               {/* Card 3: Today's Timetable List */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col justify-between min-h-[280px]">
+              <div className="bg-white/80 backdrop-blur-md rounded-[32px] border-4 border-orange-100 p-6 shadow-card flex flex-col justify-between min-h-[280px]">
                 <div>
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-border dark:border-slate-800">
-                    <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-orange-200/50">
+                    <h3 className="text-base font-bold text-slate-800">
                       {COPY.dashboardMorning.timetableTitle}
                     </h3>
                     <Link
                       href="/adult/planner"
-                      className="text-xs font-semibold text-indigo hover:underline"
+                      className="text-xs font-semibold text-orange-600 hover:underline"
                     >
                       {COPY.dashboardMorning.timetableLink}
                     </Link>
@@ -202,7 +211,7 @@ export default function AdultDashboardPage() {
                   {/* List of 3 blocks */}
                   <div className="space-y-2.5">
                     {todayBlocks.length === 0 && (
-                      <p className="text-xs text-textSecondary dark:text-slate-400 py-3 text-center">
+                      <p className="text-xs text-slate-500 py-3 text-center">
                         No blocks scheduled for today.
                       </p>
                     )}
@@ -215,58 +224,58 @@ export default function AdultDashboardPage() {
                         }}
                         className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                           block.status === 'completed'
-                            ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                            ? 'bg-slate-50/50 border-slate-200 text-slate-500'
                             : block.status === 'active'
-                            ? 'bg-indigo-light/60 border-indigo text-indigo font-medium shadow-sm'
-                            : 'bg-white dark:bg-slate-800/40 border-border dark:border-slate-800 hover:border-indigo/40 text-textPrimary dark:text-slate-200'
+                            ? 'bg-orange-50 border-orange-400 text-orange-600 font-medium shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-orange-400 text-slate-700'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
                           {block.status === 'completed' ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                           ) : block.status === 'active' ? (
-                            <span className="w-2.5 h-2.5 rounded-full bg-indigo animate-pulse shrink-0" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shrink-0" />
                           ) : (
-                            <Clock className="w-4 h-4 text-textSecondary dark:text-slate-400 shrink-0" />
+                            <Clock className="w-4 h-4 text-slate-400 shrink-0" />
                           )}
                           <div>
                             <div className="flex items-center space-x-2">
-                              <h4 className="text-xs font-bold text-textPrimary dark:text-slate-100">{block.title}</h4>
+                              <h4 className="text-xs font-bold text-slate-800">{block.title}</h4>
                               {block.moduleTitle && (
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded border border-orange-200">
                                   {block.moduleTitle}
                                 </span>
                               )}
                               {block.plan_type && (
                                 <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                                   block.plan_type.toLowerCase() === 'study' 
-                                    ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' 
-                                    : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800'
+                                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                                    : 'bg-rose-50 text-rose-600 border-rose-200'
                                 }`}>
                                   {block.plan_type}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-textSecondary dark:text-slate-400 line-clamp-1 mt-0.5 font-medium">{block.subtitle}</p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">{block.timeRange}</p>
+                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 font-medium">{block.subtitle}</p>
+                            <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{block.timeRange}</p>
                           </div>
                         </div>
 
-                        <PlayCircle className="w-4 h-4 text-indigo hover:scale-110 transition-transform" />
+                        <PlayCircle className="w-4 h-4 text-orange-500 hover:scale-110 transition-transform" />
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="mt-4 pt-3 border-t border-border dark:border-slate-800 space-y-1.5">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div className="mt-4 pt-3 border-t border-orange-200/50 space-y-1.5">
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-indigo h-full rounded-full transition-all duration-500"
+                      className="bg-orange-500 h-full rounded-full transition-all duration-500"
                       style={{ width: `${totalBlocks ? (completedBlocks / totalBlocks) * 100 : 0}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-textSecondary dark:text-slate-400 text-right font-medium">
+                  <p className="text-[11px] text-slate-500 text-right font-medium">
                     {completedBlocks} of {totalBlocks} blocks completed
                   </p>
                 </div>
@@ -276,18 +285,18 @@ export default function AdultDashboardPage() {
             {/* Middle Row: Concentration Trend Chart (Left) + Stat Cards Stacked (Right) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Weekly Concentration Trend Chart (8 cols) */}
-              <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-border dark:border-slate-800 shadow-card flex flex-col justify-between">
+              <div className="lg:col-span-8 bg-white/80 backdrop-blur-md rounded-[32px] border-4 border-orange-100 p-6 shadow-card flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">
+                    <h3 className="text-base font-bold text-slate-800">
                       {COPY.dashboardMorning.trendTitle}
                     </h3>
-                    <p className="text-xs text-textSecondary dark:text-slate-400">
+                    <p className="text-xs text-slate-500">
                       {COPY.dashboardMorning.trendSubtitle}
                     </p>
                   </div>
 
-                  <select className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs font-semibold text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo">
+                  <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400">
                     <option>Last 7 Days</option>
                     <option>Last 14 Days</option>
                     <option>Last 30 Days</option>
@@ -299,24 +308,24 @@ export default function AdultDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="indigoGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0} />
+                        <linearGradient id="warmGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#eab308" stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} domain={[60, 100]} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.5} />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} domain={[60, 100]} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: '1px solid #334155', color: '#fff', fontSize: '12px' }}
+                        contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#1e293b', fontSize: '12px' }}
                       />
                       <Area
                         type="monotone"
                         dataKey="score"
-                        stroke="#4F46E5"
+                        stroke="#f97316"
                         strokeWidth={3}
                         fillOpacity={1}
-                        fill="url(#indigoGradient)"
+                        fill="url(#warmGradient)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -325,19 +334,25 @@ export default function AdultDashboardPage() {
 
               {/* Stacked Stat Cards Right (4 cols) */}
               <div className="lg:col-span-4 flex flex-col space-y-6 justify-between">
-                <StatCard
-                  title={COPY.dashboardMorning.statStudyHours}
-                  value={analytics ? `${(analytics.total_study_minutes / 60).toFixed(1)}h` : '0h'}
-                  subtitle="Target: 35.0h / week"
-                  className="flex-1"
-                />
+                <div className="bg-amber-50 border-amber-400 rounded-[32px] border-4 shadow-sm p-6 flex-1 flex flex-col justify-center">
+                  <span className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">
+                    {COPY.dashboardMorning.statStudyHours}
+                  </span>
+                  <span className="text-4xl font-black text-amber-600 my-2">
+                    {analytics ? `${(analytics.total_study_minutes / 60).toFixed(1)}h` : '0h'}
+                  </span>
+                  <p className="text-xs text-amber-600 font-medium">Target: 35.0h / week</p>
+                </div>
 
-                <StatCard
-                  title={COPY.dashboardMorning.statDeepSessions}
-                  value={analytics ? String(analytics.sessions) : '0'}
-                  subtitle="Average length: 45 min"
-                  className="flex-1"
-                />
+                <div className="bg-white/80 backdrop-blur-md rounded-[32px] border-4 border-orange-100 p-6 shadow-card flex-1 flex flex-col justify-center">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    {COPY.dashboardMorning.statDeepSessions}
+                  </span>
+                  <span className="text-4xl font-black text-slate-800 my-2">
+                    {analytics ? String(analytics.sessions) : '0'}
+                  </span>
+                  <p className="text-xs text-slate-500 font-medium">Average length: 45 min</p>
+                </div>
               </div>
             </div>
 
@@ -578,6 +593,7 @@ export default function AdultDashboardPage() {
           <Timer className="w-7 h-7 group-hover:rotate-12 transition-transform" />
         </button>
       </PageContainer>
+      </div>
     </div>
   );
 }

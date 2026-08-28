@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { mutate } from 'swr';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
+import DashboardBackground from '@/components/kid/dashboard/DashboardBackground';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { useFocusStore } from '@/store/useFocusStore';
 import { COPY } from '@/constants/copy';
 import { TimeBlock } from '@/services/focusApi';
 import { apiRequest } from '@/lib/api';
-import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteTask, timeBlockToTaskPayload, updateTask, createTask } from '@/lib/plannerApi';
+import { listSessions, updateSession, clearSchedule, sessionToTimeBlock, carryOverOverdue, deleteSession, createSession } from '@/lib/plannerApi';
 import {
   CheckCircle2,
   Circle,
@@ -85,9 +87,11 @@ export default function AdultPlannerPage() {
     const onFocus = () => loadBlocks();
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('refresh_planner', onFocus);
     return () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('refresh_planner', onFocus);
     };
   }, []);
 
@@ -172,6 +176,14 @@ export default function AdultPlannerPage() {
     return { hour: String(h12).padStart(2, '0'), min: m[2], ap };
   };
 
+  const to24h = (h: string, m: string, ap: string) => {
+    let hour = parseInt(h, 10);
+    if (ap === 'PM' && hour < 12) hour += 12;
+    if (ap === 'AM' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${m}:00`;
+  };
+
+
   // open the modal to add a brand-new block
   const openAddModal = () => {
     setEditingBlock(null);
@@ -201,7 +213,7 @@ export default function AdultPlannerPage() {
   const handleDeleteBlock = async (block: TimeBlock, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await deleteTask(Number(block.id));
+      await deleteSession(Number(block.id));
       await loadBlocks();
     } catch {
       // ignore; row stays if delete fails
@@ -233,37 +245,38 @@ export default function AdultPlannerPage() {
   const handleSaveBlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!blockTitle.trim()) return;
-    // compose the 12-hour range the payload mapper understands
-    const blockTime = `${startHour}:${startMin} ${startAmPm} - ${endHour}:${endMin} ${endAmPm}`;
-    // build the datetimes/title from the modal input (reuse the day of the block being edited)
-    const payload = timeBlockToTaskPayload({
-      timeRange: blockTime,
-      title: blockTitle.trim(),
-      subtitle: blockSubtitle.trim() || 'Custom session',
-      status: 'upcoming',
-      type: blockType,
-      dayIndex: editingBlock?.dayIndex ?? selectedDayIndex,
-    });
+    
+    const targetDayIndex = editingBlock?.dayIndex ?? selectedDayIndex;
+    const targetDay = days.find(d => d.index === targetDayIndex) || days[0];
+    
+    const payload = {
+      subject_name: blockTitle.trim(),
+      topic_name: blockSubtitle.trim() || 'Custom session',
+      date: targetDay.dateKey,
+      start_time: to24h(startHour, startMin, startAmPm),
+      end_time: to24h(endHour, endMin, endAmPm),
+    };
+    
+    console.log("Submitting Payload:", payload);
+    
     try {
       if (editingBlock) {
         // edit/reschedule an existing block
-        await updateTask(Number(editingBlock.id), {
-          title: payload.title,
-          description: payload.description,
-          start_time: payload.start_time,
-          end_time: payload.end_time,
-        });
+        await updateSession(Number(editingBlock.id), payload);
       } else {
-        await createTask(payload);
+        await createSession(payload);
       }
+      mutate('/api/planner/sessions/');
       await loadBlocks();
-    } catch {
-      // ignore save errors for now; modal simply closes
+      
+      setEditingBlock(null);
+      setBlockTitle('');
+      setBlockSubtitle('');
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error("Error saving block:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      // Modal stays open so the user can correct validation errors
     }
-    setEditingBlock(null);
-    setBlockTitle('');
-    setBlockSubtitle('');
-    setIsModalOpen(false);
   };
 
   // one schedule row (time · subject · actions), reused by the day and week views
@@ -274,10 +287,10 @@ export default function AdultPlannerPage() {
       <div
         key={block.id}
         className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${
-          isActive ? 'bg-indigo-light/30 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+          isActive ? 'bg-orange-500/10 dark:bg-indigo-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
         }`}
       >
-        <div className={`w-28 shrink-0 text-xs font-bold ${isActive ? 'text-indigo dark:text-indigo-400' : 'text-textSecondary dark:text-slate-400'}`}>
+        <div className={`w-28 shrink-0 text-xs font-bold ${isActive ? 'text-orange-500 dark:text-orange-500-400' : 'text-textSecondary dark:text-slate-400'}`}>
           {block.timeRange}
         </div>
         <div className="flex-1 min-w-0">
@@ -286,30 +299,21 @@ export default function AdultPlannerPage() {
               {block.title}
             </h4>
             {block.moduleTitle && (
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${isCompleted ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700' : 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-800'}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${isCompleted ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700' : 'bg-indigo-100 text-orange-500-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-orange-500-300 dark:border-indigo-800'}`}>
                 {block.moduleTitle}
-              </span>
-            )}
-            {block.plan_type && (
-              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                block.plan_type.toLowerCase() === 'study' 
-                  ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' 
-                  : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800'
-              }`}>
-                {block.plan_type}
               </span>
             )}
           </div>
           <p className="text-xs text-textSecondary dark:text-slate-400 truncate mt-0.5 font-medium">{block.subtitle}</p>
         </div>
         {isActive && (
-          <span className="text-[9px] font-black bg-indigo text-white px-1.5 py-0.5 rounded uppercase shrink-0">CURRENT</span>
+          <span className="text-[9px] font-black bg-orange-500 text-white px-1.5 py-0.5 rounded uppercase shrink-0">CURRENT</span>
         )}
         <div className="flex items-center gap-1.5 shrink-0">
-          <button onClick={(e) => startBlock(block, e)} title="Start focus session" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-indigo hover:bg-indigo-light/50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
+          <button onClick={(e) => startBlock(block, e)} title="Start focus session" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-orange-500 hover:bg-orange-500/10 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
             <Play className="w-4 h-4" />
           </button>
-          <button onClick={(e) => openEditModal(block, e)} title="Edit / reschedule" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-indigo hover:bg-indigo-light/50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
+          <button onClick={(e) => openEditModal(block, e)} title="Edit / reschedule" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-orange-500 hover:bg-orange-500/10 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
             <Pencil className="w-4 h-4" />
           </button>
           <button onClick={(e) => handleDeleteBlock(block, e)} title="Delete block" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-danger dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer">
@@ -317,9 +321,9 @@ export default function AdultPlannerPage() {
           </button>
           <button onClick={(e) => toggleComplete(block, e)} title={isCompleted ? 'Mark as not done' : 'Mark as completed'} className="p-1 hover:scale-110 transition-transform cursor-pointer">
             {isCompleted ? (
-              <CheckCircle2 className="w-5 h-5 text-indigo" />
+              <CheckCircle2 className="w-5 h-5 text-orange-500" />
             ) : (
-              <Circle className="w-5 h-5 text-slate-300 dark:text-slate-600 hover:text-indigo" />
+              <Circle className="w-5 h-5 text-slate-300 dark:text-slate-600 hover:text-orange-500" />
             )}
           </button>
         </div>
@@ -352,7 +356,9 @@ export default function AdultPlannerPage() {
   const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   return (
-    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
+    <div className="min-h-screen bg-yellow-50 dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors relative overflow-hidden">
+      <DashboardBackground />
+      <div className="z-10 relative flex flex-col min-h-screen">
       <TopNav />
 
       <PageContainer>
@@ -373,9 +379,9 @@ export default function AdultPlannerPage() {
             {/* Add Subject Link Button */}
             <Link
               href="/adult/onboarding"
-              className="py-2 px-3.5 bg-indigo-light dark:bg-indigo-950/50 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/50 text-indigo dark:text-indigo-400 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-indigo/20 shadow-sm"
+              className="py-2 px-3.5 bg-orange-100 dark:bg-indigo-950/50 hover:bg-orange-200/80 dark:hover:bg-indigo-900/50 text-orange-500 dark:text-orange-500-400 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-orange-500/20 shadow-sm"
             >
-              <Plus className="w-4 h-4 text-indigo dark:text-indigo-400" />
+              <Plus className="w-4 h-4 text-orange-500 dark:text-orange-500-400" />
               <span>Add Subject</span>
             </Link>
 
@@ -392,13 +398,13 @@ export default function AdultPlannerPage() {
             )}
 
             {/* Day / Week / Month View Toggle */}
-            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
               {(['day', 'week', 'month'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                    viewMode === mode ? 'bg-indigo text-white shadow-sm' : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
+                    viewMode === mode ? 'bg-orange-500 text-white shadow-sm' : 'text-textSecondary dark:text-slate-400 hover:text-textPrimary dark:hover:text-slate-100'
                   }`}
                 >
                   {mode}
@@ -420,14 +426,14 @@ export default function AdultPlannerPage() {
                   onClick={() => setSelectedDayIndex(item.index)}
                   className={`relative py-3 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-indigo text-white shadow-md shadow-indigo/20'
-                      : 'bg-white dark:bg-slate-900 text-textPrimary dark:text-slate-200 border border-border dark:border-slate-800 hover:border-indigo/40'
+                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+                      : 'bg-white dark:bg-slate-900 text-textPrimary dark:text-slate-200 border border-orange-200 dark:border-slate-800 hover:border-orange-500/40'
                   }`}
                 >
                   <span className="text-[10px] font-extrabold tracking-wider uppercase opacity-80">{item.day}</span>
                   <span className="text-xl font-extrabold mt-0.5">{item.date}</span>
                   {count > 0 && (
-                    <span className={`mt-1 text-[9px] font-bold px-1.5 rounded-full ${isSelected ? 'bg-white/25 text-white' : 'bg-indigo-light dark:bg-indigo-950/60 text-indigo dark:text-indigo-400'}`}>
+                    <span className={`mt-1 text-[9px] font-bold px-1.5 rounded-full ${isSelected ? 'bg-white/25 text-white' : 'bg-orange-100 dark:bg-indigo-950/60 text-orange-500 dark:text-orange-500-400'}`}>
                       {count}
                     </span>
                   )}
@@ -493,8 +499,8 @@ export default function AdultPlannerPage() {
             .filter((b) => b.dateKey === selected?.dateKey)
             .sort((a, b) => rangeStartMin(a.timeRange) - rangeStartMin(b.timeRange));
           return (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 shadow-card overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+            <div className="bg-white/90 backdrop-blur-md dark:bg-slate-900 rounded-3xl border border-orange-200 dark:border-slate-800 shadow-card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-orange-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
                 <h3 className="text-sm font-bold text-textPrimary dark:text-slate-100">
                   {fullDayNames[selectedDayIndex]}
                   <span className="text-textSecondary dark:text-slate-400 font-medium"> · {selected?.date}</span>
@@ -524,8 +530,8 @@ export default function AdultPlannerPage() {
                 .filter((b) => b.dateKey === day.dateKey)
                 .sort((a, b) => rangeStartMin(a.timeRange) - rangeStartMin(b.timeRange));
               return (
-                <div key={day.day} className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 shadow-card overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-border dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                <div key={day.day} className="bg-white/90 backdrop-blur-md dark:bg-slate-900 rounded-3xl border border-orange-200 dark:border-slate-800 shadow-card overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-orange-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
                     <h3 className="text-sm font-bold text-textPrimary dark:text-slate-100">
                       {fullDayNames[day.index]}
                       <span className="text-textSecondary dark:text-slate-400 font-medium"> · {day.date}</span>
@@ -560,7 +566,7 @@ export default function AdultPlannerPage() {
           for (let i = 0; i < startOffset; i++) cells.push(null);
           for (let d = 1; d <= daysInMonth; d++) cells.push(d);
           return (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-border dark:border-slate-800 shadow-card p-5">
+            <div className="bg-white/90 backdrop-blur-md dark:bg-slate-900 rounded-3xl border border-orange-200 dark:border-slate-800 shadow-card p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-textPrimary dark:text-slate-100">{monthLabel}</h3>
                 <div className="flex items-center space-x-1">
@@ -582,10 +588,10 @@ export default function AdultPlannerPage() {
                   const c = counts[key] || 0;
                   const isToday = key === todayKey;
                   return (
-                    <div key={key} className={`aspect-square rounded-xl border p-1.5 flex flex-col ${isToday ? 'border-indigo bg-indigo-light/30 dark:bg-indigo-950/30' : 'border-border dark:border-slate-800'}`}>
-                      <span className={`text-xs font-bold ${isToday ? 'text-indigo dark:text-indigo-400' : 'text-textPrimary dark:text-slate-200'}`}>{d}</span>
+                    <div key={key} className={`aspect-square rounded-xl border p-1.5 flex flex-col ${isToday ? 'border-orange-500 bg-orange-500/10 dark:bg-indigo-950/30' : 'border-orange-200 dark:border-slate-800'}`}>
+                      <span className={`text-xs font-bold ${isToday ? 'text-orange-500 dark:text-orange-500-400' : 'text-textPrimary dark:text-slate-200'}`}>{d}</span>
                       {c > 0 && (
-                        <span className="mt-auto text-[9px] font-bold text-indigo dark:text-indigo-400 bg-indigo-light dark:bg-indigo-950/60 rounded px-1 self-start">{c} block{c > 1 ? 's' : ''}</span>
+                        <span className="mt-auto text-[9px] font-bold text-orange-500 dark:text-orange-500-400 bg-orange-100 dark:bg-indigo-950/60 rounded px-1 self-start">{c} block{c > 1 ? 's' : ''}</span>
                       )}
                     </div>
                   );
@@ -596,7 +602,7 @@ export default function AdultPlannerPage() {
         })()}
 
         {/* Bottom Wide Panel: Weekly Cognitive Load */}
-        <div className="bg-indigo-light/60 dark:bg-indigo-950/30 rounded-2xl p-6 md:p-8 border border-indigo/20 shadow-card space-y-6">
+        <div className="bg-orange-100/60 dark:bg-indigo-950/30 rounded-2xl p-6 md:p-8 border border-orange-500/20 shadow-card space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
             {/* Left Content */}
@@ -612,19 +618,19 @@ export default function AdultPlannerPage() {
 
               {/* 4 Stat Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
                   <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">SCHEDULED HOURS</span>
                   <span className="text-lg font-black text-textPrimary dark:text-slate-100 mt-0.5 block">{scheduledHours}</span>
                 </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
                   <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">FOCUS SCORE</span>
                   <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">{analytics?.avg_focus_score ?? 0}%</span>
                 </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
                   <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">COMPLETED</span>
                   <span className="text-lg font-black text-textPrimary dark:text-slate-100 mt-0.5 block">{completedBlocks}/{totalBlocks}</span>
                 </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-border dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-orange-200 dark:border-slate-800 shadow-sm">
                   <span className="text-[10px] font-bold text-textSecondary dark:text-slate-400 uppercase block">SESSIONS</span>
                   <span className="text-lg font-black text-amber-700 dark:text-amber-400 mt-0.5 block">{analytics?.sessions ?? 0}</span>
                 </div>
@@ -632,11 +638,11 @@ export default function AdultPlannerPage() {
             </div>
 
             {/* Right Large Circular Gauge Ring Card */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border dark:border-slate-800 shadow-sm flex flex-col items-center justify-center shrink-0">
+            <div className="bg-white/90 backdrop-blur-md dark:bg-slate-900 p-6 rounded-3xl border border-orange-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center shrink-0">
               <ProgressRing
                 value={progressPct}
                 label="Progress"
-                color="#4F46E5"
+                color="#f97316"
                 size={120}
                 strokeWidth={10}
               />
@@ -646,11 +652,12 @@ export default function AdultPlannerPage() {
         </div>
 
       </PageContainer>
+      </div>
 
       {/* Floating Add-Block FAB — stacked above the AI Assistant launcher */}
       <button
         onClick={openAddModal}
-        className="fixed bottom-28 right-8 w-14 h-14 bg-teal text-white rounded-full shadow-2xl hover:bg-teal-600 hover:scale-110 active:scale-95 transition-all flex items-center justify-center z-40 cursor-pointer"
+        className="fixed bottom-28 right-8 w-14 h-14 bg-orange-500 text-white rounded-full shadow-2xl hover:bg-orange-500-600 hover:scale-110 active:scale-95 transition-all flex items-center justify-center z-40 cursor-pointer"
         title="Add a study block"
       >
         <Plus className="w-6 h-6" />
@@ -659,8 +666,8 @@ export default function AdultPlannerPage() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 border border-border dark:border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-border dark:border-slate-800">
+          <div className="bg-white/90 backdrop-blur-md dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 border border-orange-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-orange-200 dark:border-slate-800">
               <h3 className="text-base font-bold text-textPrimary dark:text-slate-100">{editingBlock ? 'Edit Study Block' : 'Add Study Block'}</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -681,7 +688,7 @@ export default function AdultPlannerPage() {
                   value={blockTitle}
                   onChange={(e) => setBlockTitle(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
                 />
               </div>
 
@@ -694,7 +701,7 @@ export default function AdultPlannerPage() {
                   placeholder="e.g. Chapter 1: Linked Lists"
                   value={blockSubtitle}
                   onChange={(e) => setBlockSubtitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium"
                 />
               </div>
 
@@ -708,17 +715,17 @@ export default function AdultPlannerPage() {
                     {row.label}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    <select value={row.h} onChange={(e) => row.sh(e.target.value)} className="px-2 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer">
+                    <select value={row.h} onChange={(e) => row.sh(e.target.value)} className="px-2 py-2.5 bg-slate-50 dark:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer">
                       {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((h) => (
                         <option key={h} value={h}>{h}</option>
                       ))}
                     </select>
-                    <select value={row.m} onChange={(e) => row.sm(e.target.value)} className="px-2 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer">
+                    <select value={row.m} onChange={(e) => row.sm(e.target.value)} className="px-2 py-2.5 bg-slate-50 dark:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer">
                       {['00', '15', '30', '45'].map((m) => (
                         <option key={m} value={m}>{m}</option>
                       ))}
                     </select>
-                    <select value={row.ap} onChange={(e) => row.sap(e.target.value)} className="px-2 py-2.5 bg-slate-50 dark:bg-slate-800 border border-border dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer">
+                    <select value={row.ap} onChange={(e) => row.sap(e.target.value)} className="px-2 py-2.5 bg-slate-50 dark:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-xl text-xs text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo font-medium cursor-pointer">
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
                     </select>
@@ -736,7 +743,7 @@ export default function AdultPlannerPage() {
                 </button>
                 <button
                   type="submit"
-                  className="py-2.5 px-5 bg-indigo text-white font-semibold text-xs rounded-xl hover:bg-indigo-dark shadow-md cursor-pointer"
+                  className="py-2.5 px-5 bg-orange-500 text-white font-semibold text-xs rounded-xl hover:bg-orange-600 shadow-md cursor-pointer"
                 >
                   {editingBlock ? 'Save Changes' : 'Add Block'}
                 </button>

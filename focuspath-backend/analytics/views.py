@@ -82,3 +82,50 @@ class ParentAnalyticsView(views.APIView):
             })
 
         return Response({'children': children})
+
+
+class ParentAggregateAnalyticsView(views.APIView):
+    # Aggregated analytics for all children, or a specific child, for the parent dashboard.
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, child_id):
+        parent = request.user
+        child_ids = ParentChildRelation.objects.filter(parent=parent).values_list('child_id', flat=True)
+        
+        # If a specific child is selected, verify parent has access
+        if child_id != 'all':
+            if int(child_id) not in child_ids:
+                return Response({'error': 'Unauthorized'}, status=403)
+            child_ids = [int(child_id)]
+
+        children = User.objects.filter(id__in=child_ids)
+        sessions = FocusSession.objects.filter(user__in=children, is_active=False)
+        
+        avg_focus = sessions.aggregate(a=Avg('focus_score'))['a'] or 0
+        total_study_minutes = 0
+        for s in sessions:
+            if s.end_time:
+                total_study_minutes += (s.end_time - s.start_time).total_seconds() / 60
+                
+        # Generate trend for the last 7 days
+        today = timezone.now().date()
+        weekly = []
+        for i in range(6, -1, -1):
+            d = today - timedelta(days=i)
+            day_avg = sessions.filter(start_time__date=d).aggregate(a=Avg('focus_score'))['a']
+            weekly.append({'day': d.strftime('%a'), 'score': round(day_avg or 0)})
+
+        # Count active subjects / tasks
+        tasks = StudySession.objects.filter(user__in=children)
+        active_subjects = tasks.values('subject').distinct().count()
+
+        return Response({
+            'total_study_hours': round(total_study_minutes / 60, 1),
+            'total_study_minutes': round(total_study_minutes),
+            'average_focus_score': round(avg_focus),
+            'active_subjects': active_subjects,
+            'sessions_count': sessions.count(),
+            'weekly_concentration_trend': weekly,
+            'total_tasks': tasks.count(),
+            'completed_tasks': tasks.filter(is_completed=True).count(),
+        })

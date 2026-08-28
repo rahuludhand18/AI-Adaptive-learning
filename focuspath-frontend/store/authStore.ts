@@ -7,6 +7,12 @@ interface User {
   email: string;
   role: 'ADULT' | 'PARENT' | 'KID';
   age_group?: '1-3' | '4-6' | '7-8' | '9-10' | '11-12' | null;
+  grade_level?: string | null;
+  grade?: string | null;
+  profile?: {
+    grade_level?: string | null;
+    grade?: string | null;
+  };
   is_locked: boolean;
   tab_switch_count: number;
   temporary_session_until: string | null;

@@ -10,7 +10,7 @@ class UserRoutineSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'age_group', 'is_locked', 'tab_switch_count', 'temporary_session_until')
+        fields = ('id', 'username', 'email', 'role', 'age_group', 'grade_level', 'parent_pin', 'kid_pin_plain', 'is_locked', 'tab_switch_count', 'temporary_session_until')
         read_only_fields = ('id', 'is_locked', 'tab_switch_count', 'temporary_session_until')
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -39,10 +39,12 @@ class KidCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     # required so the Learn page can filter content to the right age bracket from day one
     age_group = serializers.ChoiceField(choices=User.AgeGroups.choices, required=True)
+    grade_level = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    parent_pin = serializers.CharField(max_length=4, required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'age_group')
+        fields = ('username', 'password', 'age_group', 'grade_level', 'parent_pin')
 
     def create(self, validated_data):
         parent = self.context['request'].user
@@ -51,7 +53,9 @@ class KidCreateSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             password=validated_data['password'],
             role=User.Roles.KID,
-            age_group=validated_data['age_group'],
+            age_group=validated_data.get('age_group'),
+            grade_level=validated_data.get('grade_level'),
+            kid_pin_plain=validated_data['password'][:4],
         )
         # Create relation
         ParentChildRelation.objects.create(parent=parent, child=user)

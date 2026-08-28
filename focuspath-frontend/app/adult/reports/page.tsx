@@ -7,10 +7,15 @@ import { Users, MessageSquare, Award } from 'lucide-react';
 
 export default function AdultReportsPage() {
   return (
-    <div className="min-h-screen bg-bg dark:bg-[#0b0f17] flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
-      <TopNav />
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100 relative overflow-hidden flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
+      {/* Decorative blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
 
-      <PageContainer>
+      <div className="z-10 w-full relative">
+        <TopNav />
+
+        <PageContainer>
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold text-textPrimary dark:text-slate-100 tracking-tight">
             Adult Focus Community
@@ -61,6 +66,7 @@ export default function AdultReportsPage() {
           </div>
         </div>
       </PageContainer>
+      </div>
     </div>
   );
 }

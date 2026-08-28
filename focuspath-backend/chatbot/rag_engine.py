@@ -3,9 +3,7 @@ import pickle
 import faiss
 import numpy as np
 import google.generativeai as genai
-
-# Configure Gemini globally
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+from utils.ai import get_random_gemini_key
 
 # Lazy global variables for fast memory access (Singleton pattern)
 _EMBEDDER = None
@@ -45,6 +43,7 @@ def load_indexes(data_dir="student_data"):
     return _FAISS_INDEX, _BM25_INDEX, _CHUNKS
 
 def ask_focuspath(user_query, chat_history, mode, dynamic_db_context):
+    genai.configure(api_key=get_random_gemini_key())
     index, bm25, chunks = load_indexes()
     
     retrieved_context = ""
@@ -134,11 +133,34 @@ OUTPUT FORMAT:
 """
         generation_config.temperature = 0.1
 
+    system_instruction += "\nIf the user asks to schedule, add, or plan a study block, extract the subject, date, and time, and call the create_study_block function. If the user mentions a day like 'Wednesday', calculate the exact YYYY-MM-DD for the next occurrence of that day."
+
+    # Define the tool
+    tools = [{
+        "function_declarations": [
+            {
+                "name": "create_study_block",
+                "description": "Create a new study block in the timetable.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "subject_name": {"type": "STRING", "description": "Subject name"},
+                        "date": {"type": "STRING", "description": "YYYY-MM-DD"},
+                        "start_time": {"type": "STRING", "description": "HH:MM format"},
+                        "duration_minutes": {"type": "INTEGER", "description": "Duration in minutes"}
+                    },
+                    "required": ["subject_name", "date", "start_time"]
+                }
+            }
+        ]
+    }]
+
     # Gemini 3.6 Flash
     model = genai.GenerativeModel(
         model_name="gemini-3.6-flash",
         system_instruction=system_instruction,
-        generation_config=generation_config
+        generation_config=generation_config,
+        tools=tools
     )
     
     # Format History (last 4 messages)
@@ -163,20 +185,42 @@ OUTPUT FORMAT:
     chat = model.start_chat(history=formatted_history)
     response = chat.send_message(user_query)
     
-    return response.text
+    # Return chat object and response so views.py can handle function calls
+    return chat, response
 
 # --- Notebook LM / Video Chat feature ---
 def get_video_transcript(video_id):
     from youtube_transcript_api import YouTubeTranscriptApi
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        # combine the text
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['en', 'en-IN', 'en-US', 'en-GB', 'hi', 'hi-IN'])
         full_text = " ".join([t['text'] for t in transcript_list])
         return full_text
-    except Exception as e:
-        return f"Error retrieving transcript: {str(e)}"
+    except Exception:
+        try:
+            # Fallback: get any available transcript and translate if possible
+            transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+            for transcript in transcripts:
+                try:
+                    if transcript.is_translatable:
+                        data = transcript.translate('en').fetch()
+                    else:
+                        data = transcript.fetch()
+                    return " ".join([t['text'] for t in data])
+                except Exception:
+                    continue
+            return "Error retrieving transcript: No usable transcript found."
+        except Exception as e:
+            return f"Error retrieving transcript: {str(e)}"
 
 def ask_video_bot(video_id, user_query, chat_history, is_breakdown=False):
+    genai.configure(api_key=get_random_gemini_key())
+    
+    if is_breakdown:
+        from content.models import AINotes
+        cached_notes = AINotes.objects.filter(video_id=video_id).first()
+        if cached_notes:
+            return cached_notes.notes_markdown
+            
     transcript = get_video_transcript(video_id)
     
     system_instruction = f"""
@@ -198,7 +242,10 @@ VIDEO TRANSCRIPT CONTEXT:
     
     if is_breakdown:
         prompt = "Please provide a highly engaging, structured, and simple summary (breakdown) of what this video teaches, using emojis. Limit to 3 short paragraphs."
-        return model.generate_content(prompt).text
+        notes = model.generate_content(prompt).text
+        from content.models import AINotes
+        AINotes.objects.create(video_id=video_id, notes_markdown=notes)
+        return notes
 
     # Format History
     formatted_history = []

@@ -40,7 +40,13 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
           setChat([{ role: 'bot', text: "Hi! I'm your AI Study Buddy. Ask me anything about this video!" }]);
         }
       } catch (err: any) {
-        if (active) setError(err.message || 'Could not load AI companion.');
+        if (active) {
+          if (err.status === 429 || err.error === 'rate_limit' || (err.message && err.message.includes('429'))) {
+            setError('rate_limit');
+          } else {
+            setError(err.message || 'Could not load AI companion.');
+          }
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -67,7 +73,12 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
         setChat(prev => [...prev, { role: 'bot', text: res.reply }]);
       }
     } catch (err: any) {
-      setChat(prev => [...prev, { role: 'bot', text: "Oops, my brain disconnected. Please try again!" }]);
+      if (err.status === 429 || err.error === 'rate_limit' || (err.message && err.message.includes('429'))) {
+        setChat(prev => [...prev, { role: 'bot', text: "Buddy is out of energy right now. Please try asking again in a few minutes! (Error: API key exhausted)" }]);
+        setError('rate_limit');
+      } else {
+        setChat(prev => [...prev, { role: 'bot', text: "Oops, my brain disconnected. Please try again!" }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,7 +108,14 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
             </div>
           )}
 
-          {error && <p className="text-sm font-bold text-rose-500 mt-2">{error}</p>}
+          {error === 'rate_limit' ? (
+            <div className="p-6 text-center flex flex-col items-center justify-center h-full">
+                <div className="text-slate-500 font-medium mb-2">😴 Buddy is taking a quick nap! Notes will be back soon.</div>
+                <div className="text-[10px] text-red-400 font-mono bg-red-50 px-2 py-1 rounded-md">Error: API key exhausted or limit finished</div>
+            </div>
+          ) : error ? (
+            <p className="text-sm font-bold text-rose-500 mt-2">{error}</p>
+          ) : null}
 
           {breakdown && (
             <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 font-medium leading-relaxed mt-3">
@@ -159,13 +177,13 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
               type="text"
               value={inputText}
               onChange={e => setInputText(e.target.value)}
-              placeholder="Ask Buddy a question about this video..."
+              placeholder={error === 'rate_limit' ? "Buddy is resting..." : "Ask Buddy a question about this video..."}
               className="w-full pl-4 pr-12 py-3 rounded-full border-2 border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 shadow-xs transition-all"
-              disabled={loading}
+              disabled={loading || error === 'rate_limit'}
             />
             <button
               type="submit"
-              disabled={!inputText.trim() || loading}
+              disabled={!inputText.trim() || loading || error === 'rate_limit'}
               className="absolute right-2 w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer shadow-xs"
             >
               <Send className="h-4 w-4" />

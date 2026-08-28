@@ -30,4 +30,5 @@ urlpatterns = [
     path('api/learn/videos/', __import__('content.views').views.YouTubeSearchView.as_view(), name='learn-videos'),
     path('api/learn/video-chat/', __import__('content.views').views.VideoChatView.as_view(), name='video-chat'),
     path('api/kids/', include('kids.urls')),
+    path('api/parent/analytics/<str:child_id>/', __import__('analytics.views').views.ParentAggregateAnalyticsView.as_view(), name='parent-analytics-all'),
 ]

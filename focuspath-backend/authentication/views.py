@@ -71,6 +71,8 @@ class UserProfileView(generics.RetrieveAPIView):
     def get_object(self):
         return self.request.user
 
+from django.contrib.auth.hashers import check_password, make_password
+
 class LogoutLogView(views.APIView):
     # JWT is stateless (no server-side session to invalidate) — this endpoint exists purely
     # so a parent can see exactly when their child signed out, paired with the LOGIN event.
@@ -99,3 +101,39 @@ class VerifyPinView(generics.GenericAPIView):
             return Response({"success": True, "role_token": "parent"})
             
         return Response({"success": False, "error": "Incorrect PIN."}, status=status.HTTP_403_FORBIDDEN)
+
+class SwitchToParentView(views.APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        pin = request.data.get('pin')
+        if not pin or len(str(pin)) != 4:
+            return Response({"detail": "Invalid PIN format."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Must be a kid trying to switch back to parent
+        if request.user.role != User.Roles.KID:
+            return Response({"detail": "Only kids can switch to parent."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from users.models import ParentChildRelation
+        relation = ParentChildRelation.objects.filter(child=request.user).first()
+        if not relation:
+            return Response({"detail": "No parent found for this child."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        parent = relation.parent
+        
+        if not parent.parent_pin:
+            # If parent hasn't set a PIN, deny switching this way
+            return Response({"detail": "Parent PIN not set. Please login via email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if check_password(str(pin), parent.parent_pin):
+            # Generate new tokens for the parent
+            from rest_framework_simplejwt.tokens import RefreshToken
+            refresh = RefreshToken.for_user(parent)
+            
+            return Response({
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": UserSerializer(parent).data
+            })
+            
+        return Response({"detail": "Incorrect PIN."}, status=status.HTTP_400_BAD_REQUEST)

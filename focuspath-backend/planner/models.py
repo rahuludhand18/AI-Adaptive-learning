@@ -9,8 +9,8 @@ class Subject(models.Model):
     color_code = models.CharField(max_length=7, default="#4F46E5") # For UI clinical color mapping
     target_exam_date = models.DateField(null=True, blank=True)
     difficulty = models.CharField(max_length=10, default='Medium')
-    plan_type = models.CharField(max_length=20, default='Study') # 'Study' or 'Revision'
-    daily_subject_hours = models.PositiveIntegerField(default=2)
+    daily_subject_hours = models.FloatField(default=1.0)
+    plan_type = models.CharField(max_length=20, default='Study')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

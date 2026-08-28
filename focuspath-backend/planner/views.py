@@ -6,57 +6,115 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
 import tempfile
 import os
-
+from llama_parse import LlamaParse
 from .models import Subject, Module, Topic, StudySession
 from .serializers import SubjectSerializer, ModuleSerializer, TopicSerializer, StudySessionSerializer
 from .scheduling import extract_syllabus_to_json
-from users.models import User
+from users.models import User, ParentChildRelation
 
-class SubjectListCreateView(generics.ListCreateAPIView):
+class ChildResolverMixin:
+    def get_target_user(self, request):
+        if request.user.role == User.Roles.PARENT:
+            child_id = request.headers.get('X-Child-Id') or request.query_params.get('child_id')
+            if child_id:
+                relation = ParentChildRelation.objects.filter(parent=request.user, child_id=child_id).first()
+                if relation:
+                    return relation.child
+        return request.user
+class SubjectListCreateView(ChildResolverMixin, generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-        return Subject.objects.filter(user=self.request.user).prefetch_related('modules__topics')
+        target_user = self.get_target_user(self.request)
+        return Subject.objects.filter(user=target_user).prefetch_related('modules__topics')
 
     def perform_create(self, serializer):
         user = self.request.user
+        target_user = self.get_target_user(self.request)
         if user.role == User.Roles.KID:
             raise PermissionDenied("Kids are not allowed to create subjects.")
-        serializer.save(user=user)
+        serializer.save(user=target_user)
 
-class SubjectRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+class SubjectRetrieveUpdateDestroyView(ChildResolverMixin, generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-        return Subject.objects.filter(user=self.request.user).prefetch_related('modules__topics')
+        target_user = self.get_target_user(self.request)
+        return Subject.objects.filter(user=target_user).prefetch_related('modules__topics')
 
 
-class StudySessionListCreateView(generics.ListCreateAPIView):
+class StudySessionListCreateView(ChildResolverMixin, generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = StudySessionSerializer
 
     def get_queryset(self):
-        return StudySession.objects.filter(user=self.request.user).select_related('topic__module__subject')
+        target_user = self.get_target_user(self.request)
+        return StudySession.objects.filter(user=target_user).select_related('topic__module__subject')
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if 'topic' not in data and 'subject_name' in data:
+            target_user = self.get_target_user(request)
+            from .models import Subject, Module, Topic
+            subject = Subject.objects.filter(user=target_user, name=data['subject_name']).first()
+            if not subject:
+                subject, _ = Subject.objects.get_or_create(
+                    user=target_user,
+                    name=data['subject_name'],
+                    defaults={
+                        'daily_subject_hours': 1.0,
+                        'plan_type': 'Study',
+                        'difficulty': 'Medium',
+                        'color_code': '#4F46E5'
+                    }
+                )
+                
+            module = Module.objects.filter(subject=subject, title="Custom Blocks").first()
+            if not module:
+                module, _ = Module.objects.get_or_create(
+                    subject=subject, 
+                    title="Custom Blocks",
+                    defaults={'order_index': 999}
+                )
+                
+            topic_name = data.get('topic_name') or 'Custom Study'
+            topic = Topic.objects.filter(module=module, name=topic_name).first()
+            if not topic:
+                topic, _ = Topic.objects.get_or_create(
+                    module=module, 
+                    name=topic_name, 
+                    defaults={'estimated_hours': 1.0}
+                )
+            
+            data['topic'] = topic.id
+            
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         user = self.request.user
+        target_user = self.get_target_user(self.request)
         if user.role == User.Roles.KID:
             raise PermissionDenied("Kids are not allowed to create sessions manually.")
-        serializer.save(user=user)
+        serializer.save(user=target_user)
 
-class StudySessionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+class StudySessionRetrieveUpdateDestroyView(ChildResolverMixin, generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = StudySessionSerializer
 
     def get_queryset(self):
-        return StudySession.objects.filter(user=self.request.user).select_related('topic__module__subject')
+        target_user = self.get_target_user(self.request)
+        return StudySession.objects.filter(user=target_user).select_related('topic__module__subject')
 
 import datetime
 from .services import generate_timetable
 
-class GenerateScheduleView(views.APIView):
+class GenerateScheduleView(ChildResolverMixin, views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -73,19 +131,14 @@ class GenerateScheduleView(views.APIView):
             from .models import Subject
             from users.models import UserRoutine
             start_date = datetime.date.today()
+            target_user = self.get_target_user(request)
             
-            subject = Subject.objects.get(id=subject_id, user=request.user)
+            subject = Subject.objects.get(id=subject_id, user=target_user)
             if target_date_str:
                 subject.target_exam_date = datetime.datetime.strptime(target_date_str, '%Y-%m-%d').date()
-            if 'plan_type' in request.data:
-                subject.plan_type = request.data['plan_type']
-            if 'difficulty' in request.data:
-                subject.difficulty = request.data['difficulty']
-            if 'daily_subject_hours' in request.data:
-                subject.daily_subject_hours = int(request.data['daily_subject_hours'])
-            subject.save()
+                subject.save()
             
-            user_routine = UserRoutine.objects.filter(user=request.user).first()
+            user_routine = UserRoutine.objects.filter(user=target_user).first()
             if not user_routine:
                 return Response({"error": "Global daily routine not found. Please configure it first."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -102,7 +155,7 @@ class GenerateScheduleView(views.APIView):
                 'dinner_time_end': user_routine.dinner_time_end,
             }
             
-            generate_timetable(request.user, subject_id, start_date, parsed_routine, daily_hours, weekend_warrior)
+            generate_timetable(target_user, subject_id, start_date, parsed_routine, daily_hours, weekend_warrior)
             
             return Response({"detail": "Schedule generated successfully."}, status=status.HTTP_201_CREATED)
         except Subject.DoesNotExist:
@@ -116,7 +169,7 @@ class GenerateScheduleView(views.APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class SyllabusUploadView(views.APIView):
+class SyllabusUploadView(ChildResolverMixin, views.APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
     
@@ -134,9 +187,7 @@ class SyllabusUploadView(views.APIView):
             tmp_path = tmp.name
 
         try:
-            # Parse PDF to markdown (imported here, not at module load, so the rest of the
-            # planner app still works even if this optional dependency isn't installed)
-            from llama_parse import LlamaParse
+            # Parse PDF to markdown
             parser = LlamaParse(result_type="markdown")
             documents = parser.load_data(tmp_path)
             
@@ -170,9 +221,11 @@ class SyllabusUploadView(views.APIView):
             
             subject_name = provided_subject_name if provided_subject_name else structured_data.get('subject_name', 'Unknown Subject')
             
+            target_user = self.get_target_user(request)
             subject = Subject.objects.create(
-                user=user,
+                user=target_user,
                 name=subject_name,
+                target_exam_date=None,
                 difficulty=difficulty
             )
             
@@ -204,12 +257,13 @@ class SyllabusUploadView(views.APIView):
                 os.remove(tmp_path)
 
 # Placeholder for Clear Schedule View
-class ClearScheduleView(views.APIView):
+class ClearScheduleView(ChildResolverMixin, views.APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        StudySession.objects.filter(user=request.user).delete()
-        Subject.objects.filter(user=request.user).delete()
+        target_user = self.get_target_user(request)
+        StudySession.objects.filter(user=target_user).delete()
+        Subject.objects.filter(user=target_user).delete()
         return Response({"detail": "Schedule cleared", "cleared": 0}, status=status.HTTP_200_OK)
 
 # Placeholder for AI Rebuild View
@@ -224,6 +278,9 @@ class AIAssistantView(views.APIView):
 
     def post(self, request):
         from chatbot.rag_engine import ask_focuspath
+        from datetime import datetime, timedelta
+        from planner.models import Subject, StudySession
+        
         query = request.data.get('query', '')
         mode = request.data.get('mode', 'GENERAL').upper()
         chat_history = request.data.get('chat_history', [])
@@ -234,7 +291,88 @@ class AIAssistantView(views.APIView):
             dynamic_context['tasks'] = [f"{s.topic.name if s.topic else 'Session'} on {s.date}" for s in sessions]
             
         try:
-            reply = ask_focuspath(query, chat_history, mode, dynamic_context)
-            return Response({"reply": reply})
+            chat, response = ask_focuspath(query, chat_history, mode, dynamic_context)
+            action = None
+            
+            # Handle Gemini Function Calls
+            if hasattr(response, 'parts') and getattr(response, 'parts', None):
+                part = response.parts[0]
+                if hasattr(part, 'function_call') and part.function_call:
+                    fc = part.function_call
+                    if fc.name == 'create_study_block':
+                        args = fc.args
+                        subject_name = args.get('subject_name')
+                        date_str = args.get('date')
+                        start_time_str = args.get('start_time')
+                        duration_minutes = args.get('duration_minutes', 60)
+                        
+                        try:
+                            # 1. Handle missing subjects gracefully
+                            subject = Subject.objects.filter(user=request.user, name__icontains=subject_name).first()
+                            if not subject:
+                                # Return error to LLM to let it know
+                                response = chat.send_message(
+                                    {"function_response": {
+                                        "name": "create_study_block", 
+                                        "response": {"status": "error", "message": f"Subject '{subject_name}' not found. Please ask user to create it first."}
+                                    }}
+                                )
+                            else:
+                                # 2. Strict date/time parsing with robust error handling
+                                # Clean up potential HH:MM:SS from Gemini
+                                if len(start_time_str) > 5:
+                                    start_time_str = start_time_str[:5]
+                                
+                                start_time = datetime.strptime(start_time_str, '%H:%M').time()
+                                dt_start = datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), start_time)
+                                dt_end = dt_start + timedelta(minutes=int(duration_minutes))
+                                
+                                StudySession.objects.create(
+                                    user=request.user,
+                                    subject=subject,
+                                    date=date_str,
+                                    start_time=start_time,
+                                    end_time=dt_end.time(),
+                                    title=f"{subject.name} Study Block",
+                                    plan_type='STUDY'
+                                )
+                                
+                                # Return success to LLM
+                                response = chat.send_message(
+                                    {"function_response": {
+                                        "name": "create_study_block", 
+                                        "response": {"status": "success", "message": f"{subject.name} scheduled for {date_str} at {start_time_str}"}
+                                    }}
+                                )
+                                action = "REFRESH_PLANNER"
+                        except ValueError as ve:
+                            # Catch date/time parsing errors
+                            response = chat.send_message(
+                                {"function_response": {
+                                    "name": "create_study_block", 
+                                    "response": {"status": "error", "message": f"Invalid date/time format. Please use YYYY-MM-DD and HH:MM. Error: {str(ve)}"}
+                                }}
+                            )
+                        except Exception as e:
+                            # Catch any other execution errors
+                            response = chat.send_message(
+                                {"function_response": {
+                                    "name": "create_study_block", 
+                                    "response": {"status": "error", "message": f"Internal execution error: {str(e)}"}
+                                }}
+                            )
+            
+            res_data = {"reply": response.text}
+            if action:
+                res_data["action"] = action
+                
+            return Response(res_data)
         except Exception as e:
+            error_str = str(e).lower()
+            if "429" in error_str or "quota" in error_str or "exhausted" in error_str:
+                return Response({
+                    "error": "rate_limit", 
+                    "message": "The AI is currently resting. Please try again later.", 
+                    "detail": "API key exhausted or rate limit finished."
+                }, status=429)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -33,12 +33,29 @@ class User(AbstractUser):
     age_group = models.CharField(
         max_length=10, choices=AgeGroups.choices, null=True, blank=True
     )  # only set for KID accounts
+    
+    grade_level = models.CharField(
+        max_length=20, 
+        choices=[
+            ('Kindergarten', 'Kindergarten'), 
+            ('Grade 1', 'Grade 1'), 
+            ('Grade 2', 'Grade 2'), 
+            ('Grade 3', 'Grade 3'), 
+            ('Grade 4', 'Grade 4'), 
+            ('Grade 5', 'Grade 5'), 
+            ('Grade 6', 'Grade 6')
+        ],
+        null=True, blank=True
+    )
+    
     is_locked = models.BooleanField(default=False)
     tab_switch_count = models.IntegerField(default=0)
     temporary_session_until = models.DateTimeField(null=True, blank=True)
     
     # Hashed parent PIN
     parent_pin = models.CharField(max_length=128, null=True, blank=True)
+    
+    kid_pin_plain = models.CharField(max_length=4, null=True, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.role})"
@@ -66,6 +83,19 @@ class ParentChildRelation(models.Model):
 class UserRoutine(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='routine')
     morning_study_start = models.TimeField(null=True, blank=True)
+    morning_study_end = models.TimeField(null=True, blank=True)
+    work_college_start = models.TimeField(null=True, blank=True)
+    work_college_end = models.TimeField(null=True, blank=True)
+    evening_study_start = models.TimeField(null=True, blank=True)
+    evening_study_end = models.TimeField(null=True, blank=True)
+    snack_time_start = models.TimeField(null=True, blank=True)
+    snack_time_end = models.TimeField(null=True, blank=True)
+    dinner_time_start = models.TimeField(null=True, blank=True)
+    dinner_time_end = models.TimeField(null=True, blank=True)
+    default_daily_hours = models.PositiveIntegerField(default=2)
+
+    def __str__(self):
+        return f"Routine for {self.user.username}"
     morning_study_end = models.TimeField(null=True, blank=True)
     work_college_start = models.TimeField(null=True, blank=True)
     work_college_end = models.TimeField(null=True, blank=True)

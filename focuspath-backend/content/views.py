@@ -137,7 +137,6 @@ class YouTubeSearchView(APIView):
         if request.user.role == User.Roles.KID and request.user.age_group in AGE_GROUP_BOUNDS:
             lo, _ = AGE_GROUP_BOUNDS[request.user.age_group]
             age_hint = ' for kids' if lo <= 8 else ' for students'
-
         videos = []
         try:
             for cat_id in safe_categories:
@@ -190,4 +189,11 @@ class VideoChatView(APIView):
             bot_reply = ask_video_bot(video_id, message, history, is_breakdown)
             return Response({"reply": bot_reply}, status=status.HTTP_200_OK)
         except Exception as e:
+            error_str = str(e).lower()
+            if "429" in error_str or "quota" in error_str or "exhausted" in error_str:
+                return Response({
+                    "error": "rate_limit", 
+                    "message": "The AI is currently resting. Please try again later.", 
+                    "detail": "API key exhausted or rate limit finished."
+                }, status=429)
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -36,10 +36,15 @@ export default function AdultSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors">
-      <TopNav />
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-100 relative overflow-hidden flex flex-col font-sans antialiased text-textPrimary dark:text-slate-100 transition-colors">
+      {/* Decorative blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-300/20 blur-[100px] rounded-full pointer-events-none z-0" />
 
-      <main className="mx-auto max-w-7xl space-y-6 p-6">
+      <div className="z-10 w-full relative">
+        <TopNav />
+
+        <main className="mx-auto max-w-7xl space-y-6 p-6">
         
         {/* Page Header Card */}
         <div className="rounded-[32px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -306,6 +311,7 @@ export default function AdultSettingsPage() {
 
         </div>
       </main>
+      </div>
     </div>
   );
 }
