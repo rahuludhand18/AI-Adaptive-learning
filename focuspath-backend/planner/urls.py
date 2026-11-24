@@ -2,7 +2,8 @@ from django.urls import path
 from planner.views import (
     SubjectListCreateView, SubjectRetrieveUpdateDestroyView,
     StudySessionListCreateView, StudySessionRetrieveUpdateDestroyView,
-    GenerateScheduleView, SyllabusUploadView, ClearScheduleView, AIRebuildScheduleView,
+    GenerateScheduleView, SyllabusUploadView, SyllabusMultiUploadView,
+    ClearScheduleView, AIRebuildScheduleView,
     AIAssistantView, CarryOverSessionsView, CarryOverSingleSessionView
 )
 
@@ -19,5 +20,6 @@ urlpatterns = [
     path('clear/', ClearScheduleView.as_view(), name='clear_schedule'),
     path('rebuild/', AIRebuildScheduleView.as_view(), name='ai_rebuild_schedule'),
     path('syllabus-upload/', SyllabusUploadView.as_view(), name='syllabus_upload'),
+    path('syllabus-upload-all/', SyllabusMultiUploadView.as_view(), name='syllabus_upload_all'),
     path('assistant/', AIAssistantView.as_view(), name='ai_assistant'),
 ]

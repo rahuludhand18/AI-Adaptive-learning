@@ -18,6 +18,7 @@ export interface TimeBlock {
   dateKey?: string; // actual calendar date 'YYYY-MM-DD' (distinguishes the same weekday across weeks)
   subjectId?: string;
   moduleTitle?: string;
+  plan_type?: string;
 }
 
 export interface DailyTask {

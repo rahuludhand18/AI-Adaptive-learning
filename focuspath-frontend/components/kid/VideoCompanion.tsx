@@ -10,7 +10,7 @@ interface ChatMessage {
   text: string;
 }
 
-export default function VideoCompanion({ videoId }: { videoId: string }) {
+export default function VideoCompanion({ videoId, title }: { videoId: string; title?: string }) {
   const [breakdown, setBreakdown] = useState<string>('');
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -33,11 +33,11 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
       try {
         const res = await apiRequest<{reply: string}>('/api/learn/video-chat/', {
           method: 'POST',
-          body: JSON.stringify({ video_id: videoId, is_breakdown: true })
+          body: JSON.stringify({ video_id: videoId, title, is_breakdown: true })
         });
         if (active && res && res.reply) {
           setBreakdown(res.reply);
-          setChat([{ role: 'bot', text: "Hi! I'm your AI Study Buddy. Ask me anything about this video!" }]);
+          setChat([{ role: 'bot', text: `Hi! I'm your AI Study Buddy. Ask me anything about this video!` }]);
         }
       } catch (err: any) {
         if (active) {
@@ -53,7 +53,7 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
     };
     fetchBreakdown();
     return () => { active = false; };
-  }, [videoId]);
+  }, [videoId, title]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +67,7 @@ export default function VideoCompanion({ videoId }: { videoId: string }) {
     try {
       const res = await apiRequest<{reply: string}>('/api/learn/video-chat/', {
         method: 'POST',
-        body: JSON.stringify({ video_id: videoId, message: userMsg, history: chat })
+        body: JSON.stringify({ video_id: videoId, title, message: userMsg, history: chat })
       });
       if (res && res.reply) {
         setChat(prev => [...prev, { role: 'bot', text: res.reply }]);

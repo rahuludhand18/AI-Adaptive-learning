@@ -67,7 +67,7 @@ def extract_syllabus_to_json(llama_parse_markdown):
     )
     
     model = genai.GenerativeModel(
-        model_name="gemini-3.6-flash",
+        model_name="gemini-flash-lite-latest",
         system_instruction=SYLLABUS_EXTRACTION_PROMPT,
         generation_config=generation_config
     )
@@ -81,6 +81,82 @@ def extract_syllabus_to_json(llama_parse_markdown):
     except json.JSONDecodeError:
         print("Failed to parse JSON.")
         return None
+
+
+# ── Multi-Subject Extraction ───────────────────────────────────────────────────
+# Given a combined PDF (all subjects in one doc), extract MULTIPLE subjects with
+# their own modules and topics.
+
+MULTI_SUBJECT_PROMPT = """
+You are an expert academic data extractor. A combined syllabus PDF may contain multiple subjects/courses.
+Your task is to identify ALL distinct subjects present and extract their structure.
+
+CRITICAL RULES:
+1. IDENTIFY ALL SUBJECTS: Look for subject names, course codes, or section headers.
+2. IGNORE administrative text: credits, marks, exam patterns, etc.
+3. ACADEMIC CONTENT ONLY: chapter names, module titles, topics.
+4. For each subject, estimate total_course_hours from "Total Hours" or "Teaching Hours" or similar.
+
+OUTPUT: Return ONLY valid raw JSON (no markdown, no code fences) in this exact schema:
+{
+  "subjects": [
+    {
+      "subject_name": "Mathematics",
+      "total_course_hours": 40,
+      "modules": [
+        {
+          "title": "Module 1: Differential Calculus",
+          "order_index": 1,
+          "topics": [
+            { "name": "Limits and Continuity", "order_index": 1 },
+            { "name": "Derivatives", "order_index": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "subject_name": "Physics",
+      "total_course_hours": 36,
+      "modules": [ ... ]
+    }
+  ]
+}
+If the PDF contains only one subject, still return the array with one entry.
+"""
+
+def extract_multi_subject_syllabus(llama_parse_markdown):
+    """Extract multiple subjects from a single combined syllabus PDF."""
+    if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
+        del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+
+    from utils.ai import get_random_gemini_key
+    import google.generativeai as genai
+
+    api_key = get_random_gemini_key()
+    genai.configure(api_key=api_key, transport='rest')
+
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        temperature=0.1
+    )
+    model = genai.GenerativeModel(
+        model_name="gemini-flash-lite-latest",
+        system_instruction=MULTI_SUBJECT_PROMPT,
+        generation_config=generation_config
+    )
+    response = model.generate_content(llama_parse_markdown)
+    try:
+        data = json.loads(response.text)
+        # Normalise: always return a list of subjects
+        if "subjects" in data and isinstance(data["subjects"], list):
+            return data["subjects"]
+        # Fallback: single-subject response wrapped in array
+        if "subject_name" in data:
+            return [data]
+        return []
+    except json.JSONDecodeError:
+        print("Multi-subject extraction: Failed to parse JSON.")
+        return []
 
 
 

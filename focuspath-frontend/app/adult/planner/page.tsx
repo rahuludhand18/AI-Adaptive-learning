@@ -28,7 +28,8 @@ import {
   UploadCloud,
   ChevronLeft,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Video
 } from 'lucide-react';
 
 // Helper to parse time string ("08:00" or "03:00 PM" or "16:00") into minutes of day
@@ -336,6 +337,17 @@ export default function AdultPlannerPage() {
           </button>
           <button onClick={(e) => startBlock(block, e)} title="Start focus session" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-orange-500 hover:bg-orange-500/10 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
             <Play className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const q = block.moduleTitle ? `${block.title} ${block.moduleTitle}` : block.title;
+              router.push(`/adult/study?q=${encodeURIComponent(q)}`);
+            }}
+            title="Watch video lecture & ask AI"
+            className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+          >
+            <Video className="w-4 h-4" />
           </button>
           <button onClick={(e) => openEditModal(block, e)} title="Edit / reschedule" className="p-1.5 rounded-lg text-textSecondary dark:text-slate-400 hover:text-orange-500 hover:bg-orange-500/10 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer">
             <Pencil className="w-4 h-4" />

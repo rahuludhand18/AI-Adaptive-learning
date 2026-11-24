@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { askPlannerAssistant } from '@/lib/plannerApi';
-import { useSWRConfig } from 'swr';
+import { mutate } from 'swr';
 import { Bot, X, Send, GraduationCap, BookOpen, CalendarDays, UploadCloud } from 'lucide-react';
 
 type Tab = 'general' | 'syllabus' | 'planner';
@@ -58,7 +58,6 @@ export function AiAssistant() {
       push(current, { role: 'bot', text: data.reply });
       
       if (data.action === 'REFRESH_PLANNER') {
-        const { mutate } = require('swr');
         mutate('/api/planner/sessions/');
         window.dispatchEvent(new Event('refresh_planner'));
       }

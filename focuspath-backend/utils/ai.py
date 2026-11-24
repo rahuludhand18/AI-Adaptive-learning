@@ -1,6 +1,14 @@
 import os
 import random
-import google.generativeai as genai
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Ensure .env is always loaded from backend root
+env_path = Path(__file__).resolve().parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
 
 def get_random_gemini_key():
     keys_string = os.getenv("GEMINI_API_KEYS", "")

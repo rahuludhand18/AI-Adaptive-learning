@@ -22,8 +22,8 @@ function toLocalInput(iso: string) {
 export default function AdultProgressPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [reschedId, setReschedId] = useState<number | null>(null);
+  const [busyId, setBusyId] = useState<string | number | null>(null);
+  const [reschedId, setReschedId] = useState<string | number | null>(null);
   const [reschedVal, setReschedVal] = useState('');
 
   const load = async () => {

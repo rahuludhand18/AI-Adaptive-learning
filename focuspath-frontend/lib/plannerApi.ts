@@ -38,6 +38,7 @@ export interface StudySession {
   is_completed: boolean;
   tab_switch_count: number;
   focus_score: number;
+  plan_type?: string;
 }
 
 // "HH:MM AM/PM" (12h) formatter for the UI timeRange.
@@ -74,6 +75,7 @@ export function sessionToTimeBlock(session: StudySession): TimeBlock {
     type: status === 'completed' ? 'completed' : status === 'active' ? 'active' : 'default',
     dayIndex: (startDt.getDay() + 6) % 7, // Mon=0 .. Sun=6
     dateKey: session.date,
+    plan_type: session.plan_type,
   };
 }
 
@@ -99,6 +101,17 @@ export async function uploadSyllabus(file: File, subjectName: string, difficulty
   }
   form.append('difficulty', difficulty);
   return apiRequest<any>('/api/planner/syllabus-upload/', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/** Upload ONE combined PDF containing ALL subjects — AI detects & extracts each subject automatically */
+export async function uploadSyllabusAll(file: File, difficulty: string = 'Medium'): Promise<{ detail: string; subjects: { id: number; name: string; modules_count: number }[] }> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('difficulty', difficulty);
+  return apiRequest<any>('/api/planner/syllabus-upload-all/', {
     method: 'POST',
     body: form,
   });
@@ -186,12 +199,14 @@ export async function acceptRebuild(d: any): Promise<any> { return {} as any; }
 export async function askPlannerAssistant(query: string, mode: string, history: any[]): Promise<{ reply: string, action?: string, error?: boolean }> {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const token = typeof window !== 'undefined' ? getCookie('accessToken') || localStorage.getItem('accessToken') : null;
+  const childId = typeof window !== 'undefined' ? localStorage.getItem('activeChildId') : null;
   
   const res = await fetch(`${base}/api/planner/assistant/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(childId ? { 'X-Child-Id': childId } : {})
     },
     body: JSON.stringify({ query, mode, chat_history: history })
   });

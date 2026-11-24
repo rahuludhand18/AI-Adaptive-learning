@@ -39,6 +39,7 @@ export const TopNav: React.FC = () => {
   const navLinks = [
     { name: 'Dashboard', href: '/adult/dashboard' },
     { name: 'Schedule', href: '/adult/planner' },
+    { name: 'Study', href: '/adult/study' },
     { name: 'Progress', href: '/adult/progress' },
     { name: 'Insights', href: '/adult/analytics' },
     { name: 'Community', href: '/adult/reports' },

@@ -259,6 +259,105 @@ class SyllabusUploadView(ChildResolverMixin, views.APIView):
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
+
+class SyllabusMultiUploadView(ChildResolverMixin, views.APIView):
+    """
+    Upload a SINGLE combined PDF that contains ALL subjects.
+    The AI extracts multiple subjects with their modules & topics and saves them all.
+    Available to PARENT and ADULT roles (not KID).
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        from .scheduling import extract_multi_subject_syllabus
+
+        if request.user.role == 'KID':
+            return Response({"error": "Kids cannot upload syllabuses."}, status=status.HTTP_403_FORBIDDEN)
+
+        if 'file' not in request.FILES:
+            return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_obj = request.FILES['file']
+        difficulty = request.data.get('difficulty', 'Medium')
+
+        # Difficulty multiplier
+        mult = {'hard': 1.25, 'easy': 0.75}.get(difficulty.lower(), 1.0)
+
+        # Save temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            for chunk in file_obj.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        try:
+            parser = LlamaParse(result_type="markdown")
+            documents = parser.load_data(tmp_path)
+            full_text = "\n\n".join([doc.text for doc in documents])
+
+            subjects_data = extract_multi_subject_syllabus(full_text)
+
+            if not subjects_data:
+                return Response({"error": "Could not extract any subjects from the PDF."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            target_user = self.get_target_user(request)
+            created_subjects = []
+
+            for subj_data in subjects_data:
+                subject_name = subj_data.get('subject_name', 'Unknown Subject').strip()
+                if not subject_name:
+                    continue
+
+                total_hours = int(subj_data.get('total_course_hours') or 40)
+                modules = subj_data.get('modules', [])
+                num_modules = max(len(modules), 1)
+                base_module_time = (total_hours / num_modules) * mult
+
+                subject = Subject.objects.create(
+                    user=target_user,
+                    name=subject_name,
+                    target_exam_date=None,
+                    difficulty=difficulty,
+                )
+
+                for mod_data in modules:
+                    module = Module.objects.create(
+                        subject=subject,
+                        title=mod_data.get('title', 'Module'),
+                        order_index=mod_data.get('order_index', 0),
+                    )
+                    topics = mod_data.get('topics', [])
+                    num_topics = max(len(topics), 1)
+                    hours_per_topic = base_module_time / num_topics
+
+                    for top_data in topics:
+                        Topic.objects.create(
+                            module=module,
+                            name=top_data.get('name', 'Topic'),
+                            estimated_hours=hours_per_topic,
+                            order_index=top_data.get('order_index', 0),
+                        )
+
+                created_subjects.append({
+                    "id": subject.id,
+                    "name": subject.name,
+                    "modules_count": len(modules),
+                })
+
+            return Response({
+                "detail": f"Successfully extracted {len(created_subjects)} subject(s).",
+                "subjects": created_subjects,
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": "Multi-subject extraction failed", "details": str(e)}, status=400)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+
 from django.db.models import F
 from datetime import timedelta, date
 
@@ -338,45 +437,115 @@ class AIRebuildScheduleView(views.APIView):
 
     def post(self, request):
         return Response({"detail": "Not implemented yet - Waiting for Phase 3"}, status=status.HTTP_200_OK)
-class AIAssistantView(views.APIView):
+class AIAssistantView(ChildResolverMixin, views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         from chatbot.rag_engine import ask_focuspath
         from datetime import datetime, timedelta, date
-        from planner.models import Subject, StudySession
+        from planner.models import Subject, Module, Topic, StudySession
+        from focus.models import FocusSession
+        from users.models import User, ParentChildRelation, UserRoutine
         
         query = request.data.get('query', '')
         mode = request.data.get('mode', 'GENERAL').upper()
         chat_history = request.data.get('chat_history', [])
         
-        # --- NEW LIVE CONTEXT LOGIC ---
+        target_user = self.get_target_user(request)
         today = date.today()
-        seven_days_later = today + timedelta(days=7)
-        upcoming_sessions = StudySession.objects.filter(
-            user=request.user, 
-            date__gte=today,
-            date__lte=seven_days_later,
-            is_completed=False
-        ).select_related('topic__module__subject').order_by('date', 'start_time')
+        
+        # 1. User & Account Profile
+        user_summary = f"Logged in User: {request.user.username} (Role: {request.user.role})"
+        if target_user != request.user:
+            user_summary += f" | Viewing Child Student: {target_user.username} (Role: {target_user.role})"
+        if target_user.role == User.Roles.KID:
+            user_summary += f" | Grade/Age: {target_user.grade_level or target_user.age_group or 'Not specified'}"
 
-        schedule_context = f"SYSTEM INSTRUCTION - LIVE USER DATA: Today's date is {today}. The user's upcoming pending schedule for the next 7 days is:\n"
-        if upcoming_sessions.exists():
-            for s in upcoming_sessions:
-                subject = s.topic.module.subject.name if s.topic and s.topic.module else "Custom"
-                topic = s.topic.name if s.topic else "Custom Topic"
-                start = s.start_time.strftime('%H:%M') if s.start_time else "TBD"
-                schedule_context += f"- [{s.date}] {subject}: {topic} at {start}\n"
+        # 2. Enrolled Subjects, Modules & Topics (Curriculum on the website)
+        subjects_qs = Subject.objects.filter(user=target_user).prefetch_related('modules__topics')
+        if not subjects_qs.exists() and request.user.role == User.Roles.PARENT:
+            subjects_qs = Subject.objects.filter(user__parent_relations__parent=request.user).prefetch_related('modules__topics')
+            
+        curriculum_text = ""
+        if subjects_qs.exists():
+            curriculum_text = "CURRENT SUBJECTS & TOPICS ON PLATFORM:\n"
+            for sub in subjects_qs:
+                curriculum_text += f"• Subject: {sub.name} (Difficulty: {sub.difficulty}, Plan: {sub.plan_type}, Target: {sub.daily_subject_hours}h/day)\n"
+                for mod in sub.modules.all():
+                    topics_strs = [f"{t.name} [{'✓ Completed' if t.is_completed else 'Pending'}, {t.estimated_hours}h]" for t in mod.topics.all()]
+                    curriculum_text += f"  - {mod.title}: {', '.join(topics_strs) if topics_strs else 'No topics'}\n"
         else:
-            schedule_context += "- No tasks scheduled for the next 7 days. They are completely free!\n"
+            curriculum_text = "CURRENT SUBJECTS: No custom subjects created in the database yet.\n"
 
-        dynamic_context = {'live_schedule': schedule_context}
-        if mode == 'PLANNER':
-            sessions = StudySession.objects.filter(user=request.user, is_completed=False)[:10]
-            dynamic_context['tasks'] = [f"{s.topic.name if s.topic else 'Session'} on {s.date}" for s in sessions]
+        # 3. Live Study Sessions & Schedule
+        all_sessions = StudySession.objects.filter(user=target_user).select_related('topic__module__subject').order_by('date', 'start_time')
+        total_sessions = all_sessions.count()
+        completed_sessions = all_sessions.filter(is_completed=True).count()
+        completion_rate = int((completed_sessions / total_sessions * 100)) if total_sessions > 0 else 0
+        
+        upcoming_sessions = all_sessions.filter(is_completed=False, date__gte=today)
+        
+        schedule_text = f"LIVE SCHEDULE & TIMETABLE (Today is {today.strftime('%A, %B %d, %Y')}):\n"
+        schedule_text += f"- Total Study Sessions: {total_sessions} ({completed_sessions} completed, {completion_rate}% completion rate)\n"
+        if upcoming_sessions.exists():
+            schedule_text += "Upcoming Pending Sessions:\n"
+            for s in upcoming_sessions[:10]:
+                sub_name = s.topic.module.subject.name if s.topic and s.topic.module else "Custom"
+                top_name = s.topic.name if s.topic else "Custom Topic"
+                st = s.start_time.strftime('%H:%M') if s.start_time else "TBD"
+                et = s.end_time.strftime('%H:%M') if s.end_time else "TBD"
+                date_formatted = s.date.strftime('%A, %B %d, %Y') if hasattr(s.date, 'strftime') else str(s.date)
+                schedule_text += f"  • [{date_formatted}] {sub_name}: {top_name} ({st} - {et})\n"
+        elif all_sessions.exists():
+            schedule_text += f"- User has {total_sessions} sessions on record (all currently completed or from earlier dates).\n"
+        else:
+            schedule_text += "- No study sessions currently scheduled in the timetable.\n"
+
+        # 4. Focus & Distraction Statistics
+        focus_qs = FocusSession.objects.filter(user=target_user)
+        total_focus = focus_qs.count()
+        avg_score = (sum(f.focus_score for f in focus_qs) // total_focus) if total_focus > 0 else 100
+        total_switches = sum(f.tab_switch_count for f in focus_qs)
+        focus_text = f"LIVE FOCUS STATS: Average Focus Score: {avg_score}%, Total Focus Sessions: {total_focus}, Total Tab Distractions: {total_switches}.\n"
+        
+        # 5. Routine Info
+        routine = getattr(target_user, 'routine', None)
+        routine_text = ""
+        if routine:
+            routine_text = f"USER PREFERRED ROUTINE WINDOWS (General availability, NOT specific session times): Target: {routine.default_daily_hours}h/day"
+            if routine.morning_study_start and routine.morning_study_end:
+                routine_text += f", Morning Window: {routine.morning_study_start.strftime('%H:%M')}-{routine.morning_study_end.strftime('%H:%M')}"
+            if routine.evening_study_start and routine.evening_study_end:
+                routine_text += f", Evening Window: {routine.evening_study_start.strftime('%H:%M')}-{routine.evening_study_end.strftime('%H:%M')}"
+            routine_text += "\n"
+
+        # 6. Parent Family Overview (if parent)
+        family_text = ""
+        if request.user.role == User.Roles.PARENT:
+            children_relations = ParentChildRelation.objects.filter(parent=request.user).select_related('child')
+            if children_relations.exists():
+                family_text = "FAMILY OVERVIEW (Children managed by this parent):\n"
+                for rel in children_relations:
+                    ch = rel.child
+                    family_text += f"• Child: {ch.username} (Locked: {ch.is_locked}, PIN: {ch.kid_pin_plain or 'Not set'})\n"
+
+        live_data_summary = f"{user_summary}\n\n{curriculum_text}\n\n{schedule_text}\n\n{focus_text}\n\n{routine_text}\n\n{family_text}".strip()
+
+        dynamic_context = {
+            'user_summary': user_summary,
+            'curriculum_context': curriculum_text,
+            'schedule_context': schedule_text,
+            'focus_context': focus_text,
+            'routine_text': routine_text,
+            'family_text': family_text,
+            'live_schedule': live_data_summary,
+            'tasks': [f"{s.topic.name if s.topic else 'Session'} on {s.date.strftime('%A, %B %d, %Y') if hasattr(s.date, 'strftime') else s.date}" for s in all_sessions[:10]],
+            'progress': completion_rate
+        }
             
         try:
             chat, response = ask_focuspath(query, chat_history, mode, dynamic_context)
+            reply_text = None
             action = None
             
             # Handle Gemini Function Calls
@@ -392,65 +561,59 @@ class AIAssistantView(views.APIView):
                         duration_minutes = args.get('duration_minutes', 60)
                         
                         try:
-                            # 1. Handle missing subjects gracefully
-                            subject = Subject.objects.filter(user=request.user, name__icontains=subject_name).first()
+                            # 1. Find or create subject
+                            subject = Subject.objects.filter(user=target_user, name__icontains=subject_name).first()
                             if not subject:
-                                # Return error to LLM to let it know
-                                response = chat.send_message(
-                                    {"function_response": {
-                                        "name": "create_study_block", 
-                                        "response": {"status": "error", "message": f"Subject '{subject_name}' not found. Please ask user to create it first."}
-                                    }}
-                                )
-                            else:
-                                # 2. Strict date/time parsing with robust error handling
-                                # Clean up potential HH:MM:SS from Gemini
-                                if len(start_time_str) > 5:
-                                    start_time_str = start_time_str[:5]
-                                
-                                start_time = datetime.strptime(start_time_str, '%H:%M').time()
-                                dt_start = datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), start_time)
-                                dt_end = dt_start + timedelta(minutes=int(duration_minutes))
-                                
-                                StudySession.objects.create(
-                                    user=request.user,
-                                    subject=subject,
-                                    date=date_str,
-                                    start_time=start_time,
-                                    end_time=dt_end.time(),
-                                    title=f"{subject.name} Study Block",
-                                    plan_type='STUDY'
+                                subject = Subject.objects.create(
+                                    user=target_user,
+                                    name=subject_name,
+                                    daily_subject_hours=1.0,
+                                    plan_type='Study',
+                                    difficulty='Medium',
+                                    color_code='#4F46E5'
                                 )
                                 
-                                # Return success to LLM
-                                response = chat.send_message(
-                                    {"function_response": {
-                                        "name": "create_study_block", 
-                                        "response": {"status": "success", "message": f"{subject.name} scheduled for {date_str} at {start_time_str}"}
-                                    }}
-                                )
-                                action = "REFRESH_PLANNER"
+                            # 2. Strict date/time parsing with robust error handling
+                            if len(start_time_str) > 5:
+                                start_time_str = start_time_str[:5]
+                            
+                            start_time = datetime.strptime(start_time_str, '%H:%M').time()
+                            dt_start = datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), start_time)
+                            dt_end = dt_start + timedelta(minutes=int(duration_minutes))
+                            
+                            # 3. Find or create module and topic
+                            module, _ = Module.objects.get_or_create(
+                                subject=subject, 
+                                title="Custom Blocks",
+                                defaults={'order_index': 999}
+                            )
+                            topic_name = f"{subject_name} Study Block"
+                            topic, _ = Topic.objects.get_or_create(
+                                module=module, 
+                                name=topic_name, 
+                                defaults={'estimated_hours': float(duration_minutes) / 60.0}
+                            )
+                            
+                            StudySession.objects.create(
+                                user=target_user,
+                                topic=topic,
+                                date=date_str,
+                                start_time=start_time,
+                                end_time=dt_end.time()
+                            )
+                            
+                            reply_text = f"✅ Scheduled **{subject.name}** for **{date_str}** from **{start_time_str}** to **{dt_end.strftime('%H:%M')}** ({duration_minutes} mins)! Your timetable has been refreshed."
+                            action = "REFRESH_PLANNER"
                         except ValueError as ve:
-                            # Catch date/time parsing errors
-                            response = chat.send_message(
-                                {"function_response": {
-                                    "name": "create_study_block", 
-                                    "response": {"status": "error", "message": f"Invalid date/time format. Please use YYYY-MM-DD and HH:MM. Error: {str(ve)}"}
-                                }}
-                            )
+                            reply_text = f"⚠️ Could not schedule block due to date/time format error: {str(ve)}. Please provide dates as YYYY-MM-DD and time as HH:MM."
                         except Exception as e:
-                            # Catch any other execution errors
-                            response = chat.send_message(
-                                {"function_response": {
-                                    "name": "create_study_block", 
-                                    "response": {"status": "error", "message": f"Internal execution error: {str(e)}"}
-                                }}
-                            )
+                            reply_text = f"⚠️ Internal error creating study block: {str(e)}"
             
-            try:
-                reply_text = response.text
-            except ValueError:
-                reply_text = "I'm sorry, I tried to perform an action but couldn't formulate a text response. Please ask me directly or provide more details!"
+            if not reply_text:
+                try:
+                    reply_text = response.text
+                except (ValueError, AttributeError):
+                    reply_text = "I'm sorry, I couldn't formulate a text response. Please ask me directly or provide more details!"
                 
             res_data = {"reply": reply_text}
             if action:

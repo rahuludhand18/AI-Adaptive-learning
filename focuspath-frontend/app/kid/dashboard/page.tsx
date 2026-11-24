@@ -26,7 +26,8 @@ import {
   Sparkles,
   Lightbulb,
   Lock,
-  Gift
+  Gift,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function KidDashboardPage() {

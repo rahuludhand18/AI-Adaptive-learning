@@ -84,7 +84,9 @@ function LoginContent() {
       setAuth(res.user, res.access, res.refresh);
 
       const role = (res.user.role || '').toLowerCase();
-      if (role === 'parent' || role === 'adult') {
+      if (role === 'adult') {
+        router.push('/adult/dashboard');
+      } else if (role === 'parent') {
         router.push('/parent/dashboard');
       } else if (role === 'kid') {
         setAwaitingMorseGate(true);

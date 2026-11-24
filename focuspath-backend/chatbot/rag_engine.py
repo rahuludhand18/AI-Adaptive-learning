@@ -1,6 +1,5 @@
 import os
 import pickle
-import faiss
 import numpy as np
 import google.generativeai as genai
 from utils.ai import get_random_gemini_key
@@ -12,13 +11,27 @@ _BM25_INDEX = None
 _CHUNKS = None
 _INDEXES_LOADED = False
 
+def get_faiss():
+    """Safely import faiss with graceful fallback if native binaries are blocked or unavailable."""
+    try:
+        import faiss
+        return faiss
+    except Exception:
+        return None
+
+def configure_gemini():
+    """Configure Gemini with clean environment and REST transport."""
+    if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
+        del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+    genai.configure(api_key=get_random_gemini_key(), transport='rest')
+
 def get_embedder():
-    """Lazy load the sentence transformer to save memory and ensure lightning-fast startup."""
+    """Only use sentence transformer if already initialized to prevent PyTorch cold-start freezes."""
     global _EMBEDDER
-    if _EMBEDDER is None:
-        from sentence_transformers import SentenceTransformer
-        _EMBEDDER = SentenceTransformer('all-MiniLM-L6-v2')
-    return _EMBEDDER
+    import sys
+    if 'sentence_transformers' in sys.modules and _EMBEDDER is not None:
+        return _EMBEDDER
+    return None
 
 def load_indexes(data_dir="student_data"):
     """Load FAISS and BM25 indexes into memory (Singleton) for O(1) repeated access."""
@@ -31,7 +44,9 @@ def load_indexes(data_dir="student_data"):
         return None, None, None
         
     try:
-        _FAISS_INDEX = faiss.read_index(faiss_path)
+        faiss_lib = get_faiss()
+        if faiss_lib:
+            _FAISS_INDEX = faiss_lib.read_index(faiss_path)
         with open(os.path.join(data_dir, "bm25_index.pkl"), "rb") as f:
             _BM25_INDEX = pickle.load(f)
         with open(os.path.join(data_dir, "chunks.pkl"), "rb") as f:
@@ -43,46 +58,83 @@ def load_indexes(data_dir="student_data"):
     return _FAISS_INDEX, _BM25_INDEX, _CHUNKS
 
 def ask_focuspath(user_query, chat_history, mode, dynamic_db_context):
-    genai.configure(api_key=get_random_gemini_key())
+    configure_gemini()
     index, bm25, chunks = load_indexes()
     
     retrieved_context = ""
-    if index and bm25 and chunks and mode in ['SYLLABUS', 'PLANNER']:
-        # Hybrid Retrieval
-        k = 3
+    if chunks:
+        # Hybrid Retrieval across all modes
+        k = 4
+        faiss_set = set()
+        faiss_lib = get_faiss()
         
         # FAISS Retrieval (Vector Search O(log N) due to HNSW)
-        embedder = get_embedder()
-        query_embedding = embedder.encode([user_query], convert_to_numpy=True)
-        faiss.normalize_L2(query_embedding)
-        _, faiss_indices = index.search(query_embedding, k)
-        faiss_set = set(faiss_indices[0].tolist())
+        if index and faiss_lib:
+            try:
+                embedder = get_embedder()
+                if embedder:
+                    query_embedding = embedder.encode([user_query], convert_to_numpy=True)
+                    faiss_lib.normalize_L2(query_embedding)
+                    _, faiss_indices = index.search(query_embedding, k)
+                    faiss_set = set(faiss_indices[0].tolist())
+            except Exception:
+                faiss_set = set()
         
         # BM25 Retrieval (Inverted Index O(1) term lookup)
-        tokenized_query = user_query.lower().split()
-        bm25_scores = bm25.get_scores(tokenized_query)
-        # Using argpartition for faster Top-K (Advanced DSA: O(N) instead of O(N log N) sorting)
-        if len(bm25_scores) > k:
-            bm25_indices = np.argpartition(bm25_scores, -k)[-k:]
-        else:
-            bm25_indices = np.argsort(bm25_scores)[::-1][:k]
-        bm25_set = set(bm25_indices.tolist())
+        bm25_set = set()
+        if bm25:
+            tokenized_query = user_query.lower().split()
+            bm25_scores = bm25.get_scores(tokenized_query)
+            if len(bm25_scores) > k:
+                bm25_indices = np.argpartition(bm25_scores, -k)[-k:]
+            else:
+                bm25_indices = np.argsort(bm25_scores)[::-1][:k]
+            bm25_set = set(bm25_indices.tolist())
         
         # Set Union
         hybrid_indices = list(faiss_set.union(bm25_set))
         valid_indices = [i for i in hybrid_indices if 0 <= i < len(chunks)]
-        retrieved_context = "\n\n".join([chunks[i] for i in valid_indices])
+        
+        # Broad keyword check: if user asks about syllabus or curriculum, ensure top chunks are present
+        syllabus_keywords = ['syllabus', 'course', 'curriculum', 'topics', 'module', 'what is in', 'subject', 'exam']
+        if any(w in user_query.lower() for w in syllabus_keywords) or not valid_indices:
+            valid_indices = list(dict.fromkeys(valid_indices + list(range(min(len(chunks), 5)))))
+            
+        retrieved_context = "\n\n".join([chunks[i] for i in valid_indices if 0 <= i < len(chunks)])
 
     # Mode Routing & System Instructions
     system_instruction = ""
     generation_config = genai.types.GenerationConfig()
+    live_schedule = dynamic_db_context.get('live_schedule', '')
     
     if mode == 'GENERAL':
-        system_instruction = "Act as a helpful, encouraging academic advisor. Answer standard study technique questions without needing deep document context."
+        system_instruction = f"""You are FocusPath's Intelligent Academic Advisor and Live Platform Companion.
+You have FULL REAL-TIME ACCESS to the user's platform state, enrolled courses, syllabus documents, daily timetable, and focus metrics.
+
+REAL-TIME PLATFORM DATA & USER CONTEXT:
+{live_schedule}
+
+UPLOADED SYLLABUS & COURSE DOCUMENTS (RAG RETRIEVAL):
+{retrieved_context if retrieved_context else "No uploaded syllabus documents currently found."}
+
+INSTRUCTIONS:
+1. Always leverage the real-time platform data and syllabus context above to give precise, personalized, and context-aware responses.
+2. If the user asks about their syllabus, courses, topics, schedule, tasks, or study performance, answer directly using the real data provided. NEVER say you lack access to their syllabus or platform data.
+3. Be encouraging, actionable, and structured in your guidance.
+4. Date & Day Accuracy: Always use the exact weekday explicitly stated in REAL-TIME PLATFORM DATA (e.g. November 20, 2026 is Friday, NOT Thursday). Never guess or misstate the day of the week.
+5. Exact Session Timing: When telling the user about scheduled study sessions, always quote the exact session times from the TIMETABLE (e.g., 07:00 - 08:00 AM). Do NOT confuse or replace the session time with their broad preferred routine window (e.g., 07:00 - 09:00). State clearly that the session itself is 07:00 to 08:00 AM."""
         generation_config.temperature = 0.7
         
     elif mode == 'SYLLABUS':
-        system_instruction = f"Act as a subject-matter expert. Use the Hybrid RAG context strictly to break down the uploaded syllabus, explain core concepts, and estimate the difficulty of specific modules.\n\nContext:\n{retrieved_context}"
+        system_instruction = f"""You are FocusPath's Subject-Matter & Syllabus Expert.
+Use the uploaded syllabus documents and live platform curriculum to break down subjects, explain core concepts, outline modules, and assess difficulty.
+
+REAL-TIME PLATFORM DATA & USER CONTEXT:
+{live_schedule}
+
+SYLLABUS DATA (RAG RETRIEVAL):
+{retrieved_context}
+"""
         generation_config.temperature = 0.5
         
     elif mode == 'PLANNER':
@@ -90,8 +142,10 @@ def ask_focuspath(user_query, chat_history, mode, dynamic_db_context):
         progress = dynamic_db_context.get('progress', 0)
         upcoming_blocks = dynamic_db_context.get('upcoming_blocks', [])
         
-        system_instruction = f"""
-You are FocusPath's strict and precise Academic Timetable Planner. Your objective is to calculate and generate a highly optimized study schedule based on uploaded syllabi.
+        system_instruction = f"""You are FocusPath's strict and precise Academic Timetable Planner. Your objective is to calculate and generate a highly optimized study schedule based on the user's live platform curriculum and uploaded syllabus.
+
+REAL-TIME PLATFORM DATA & USER CONTEXT:
+{live_schedule}
 
 DYNAMIC CONTEXT PROVIDED TO YOU:
 - Syllabus Data: {retrieved_context}
@@ -99,6 +153,7 @@ DYNAMIC CONTEXT PROVIDED TO YOU:
 - Exam Date / Deadline: Identify from the user's prompt
 - Available Study Hours Per Week: Identify from the user's prompt
 - Existing Planned Tasks: {tasks}
+- Current Progress: {progress}%
 
 PHASE 1: PRE-REQUISITE GATEKEEPER
 Before generating any timetable, check the DYNAMIC CONTEXT. 
@@ -133,40 +188,34 @@ OUTPUT FORMAT:
 """
         generation_config.temperature = 0.1
 
-    system_instruction += "\nIf the user asks to schedule, add, or plan a study block, extract the subject, date, and time, and call the create_study_block function. If the user mentions a day like 'Wednesday', calculate the exact YYYY-MM-DD for the next occurrence of that day."
+    # Only load tools if in PLANNER mode or if user is asking to schedule/plan tasks
+    # This prevents 5-10s of function calling negotiation latency on standard conversational turns
+    needs_tools = (mode == 'PLANNER') or any(w in user_query.lower() for w in [
+        'schedule', 'add block', 'study block', 'plan block', 'create session', 'add session', 'timetable block'
+    ])
     
-    live_schedule = dynamic_db_context.get('live_schedule', '')
-    if live_schedule:
-        system_instruction += f"\n\n{live_schedule}"
-
-    # Define the tool
-    tools = [{
-        "function_declarations": [
-            {
-                "name": "create_study_block",
-                "description": "Create a new study block in the timetable.",
-                "parameters": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "subject_name": {"type": "STRING", "description": "Subject name"},
-                        "date": {"type": "STRING", "description": "YYYY-MM-DD"},
-                        "start_time": {"type": "STRING", "description": "HH:MM format"},
-                        "duration_minutes": {"type": "INTEGER", "description": "Duration in minutes"}
-                    },
-                    "required": ["subject_name", "date", "start_time"]
+    tools = None
+    if needs_tools:
+        system_instruction += "\nIf the user asks to schedule, add, or plan a study block, extract the subject, date, and time, and call the create_study_block function. If the user mentions a day like 'Wednesday', calculate the exact YYYY-MM-DD for the next occurrence of that day."
+        tools = [{
+            "function_declarations": [
+                {
+                    "name": "create_study_block",
+                    "description": "Create a new study block in the timetable.",
+                    "parameters": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "subject_name": {"type": "STRING", "description": "Subject name"},
+                            "date": {"type": "STRING", "description": "YYYY-MM-DD"},
+                            "start_time": {"type": "STRING", "description": "HH:MM format"},
+                            "duration_minutes": {"type": "INTEGER", "description": "Duration in minutes"}
+                        },
+                        "required": ["subject_name", "date", "start_time"]
+                    }
                 }
-            }
-        ]
-    }]
+            ]
+        }]
 
-    # Gemini 3.6 Flash
-    model = genai.GenerativeModel(
-        model_name="gemini-3.6-flash",
-        system_instruction=system_instruction,
-        generation_config=generation_config,
-        tools=tools
-    )
-    
     # Format History (last 4 messages)
     formatted_history = []
     last_role = None
@@ -178,14 +227,28 @@ OUTPUT FORMAT:
             last_role = role
         else:
             # Combine sequential roles to prevent Gemini API crashes
-            formatted_history[-1]['parts'][0] += "\n" + msg.get('text', '')
+            if formatted_history:
+                formatted_history[-1]['parts'][0] += "\n" + msg.get('text', '')
+            else:
+                formatted_history.append({'role': role, 'parts': [msg.get('text', '')]})
+                last_role = role
             
-    # Prevent Gemini 400 Error: "Ensure model and user roles alternate"
-    # If the last message in history was 'user', and we are sending another 'user' query, combine them.
-    if last_role == 'user':
+    # Gemini Multiturn Rule: The first message in history MUST be from the 'user' role
+    while formatted_history and formatted_history[0]['role'] == 'model':
+        formatted_history.pop(0)
+
+    # If the last message in history was 'user', combine it with user_query to preserve alternation
+    if formatted_history and formatted_history[-1]['role'] == 'user':
         last_user_msg = formatted_history.pop()['parts'][0]
         user_query = f"{last_user_msg}\n{user_query}"
         
+    model = genai.GenerativeModel(
+        model_name="gemini-flash-lite-latest",
+        system_instruction=system_instruction,
+        generation_config=generation_config,
+        tools=tools
+    )
+    
     chat = model.start_chat(history=formatted_history)
     response = chat.send_message(user_query)
     
@@ -194,30 +257,39 @@ OUTPUT FORMAT:
 
 # --- Notebook LM / Video Chat feature ---
 def get_video_transcript(video_id):
-    from youtube_transcript_api import YouTubeTranscriptApi
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['en', 'en-IN', 'en-US', 'en-GB', 'hi', 'hi-IN'])
-        full_text = " ".join([t['text'] for t in transcript_list])
-        return full_text
-    except Exception:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        ytt = YouTubeTranscriptApi()
+        
+        # 1. Direct fetch with preferred languages
         try:
-            # Fallback: get any available transcript and translate if possible
-            transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
-            for transcript in transcripts:
+            fetched = ytt.fetch(video_id, languages=['en', 'en-IN', 'en-US', 'en-GB', 'hi', 'hi-IN'])
+            return " ".join(s.text for s in fetched.snippets)
+        except Exception:
+            pass
+            
+        # 2. Iterate transcript list and translate or fetch
+        try:
+            transcript_list = ytt.list(video_id)
+            for t in transcript_list:
                 try:
-                    if transcript.is_translatable:
-                        data = transcript.translate('en').fetch()
+                    if getattr(t, 'is_translatable', False):
+                        translated = t.translate('en').fetch()
+                        return " ".join(s.text for s in translated.snippets)
                     else:
-                        data = transcript.fetch()
-                    return " ".join([t['text'] for t in data])
+                        fetched = t.fetch()
+                        return " ".join(s.text for s in fetched.snippets)
                 except Exception:
                     continue
-            return "Error retrieving transcript: No usable transcript found."
-        except Exception as e:
-            return f"Error retrieving transcript: {str(e)}"
+        except Exception:
+            pass
+            
+        return "Note: Captions are not available for this video."
+    except Exception as e:
+        return f"Note: Transcript extraction unavailable ({str(e)})."
 
-def ask_video_bot(video_id, user_query, chat_history, is_breakdown=False):
-    genai.configure(api_key=get_random_gemini_key())
+def ask_video_bot(video_id, user_query, chat_history, is_breakdown=False, video_title=""):
+    configure_gemini()
     
     if is_breakdown:
         from content.models import AINotes
@@ -227,25 +299,31 @@ def ask_video_bot(video_id, user_query, chat_history, is_breakdown=False):
             
     transcript = get_video_transcript(video_id)
     
-    system_instruction = f"""
-You are an expert AI Tutor powered by NotebookLM-style capabilities. 
-Your goal is to help a child understand the video they are currently watching.
-Always be encouraging, enthusiastic, and speak simply so a kid can understand.
+    system_instruction = f"""You are an enthusiastic, friendly AI Study Buddy and Tutor for kids.
+The student is currently watching this educational video:
+Title: {video_title or 'Educational Lesson'}
+Video ID: {video_id}
 
 VIDEO TRANSCRIPT CONTEXT:
-{transcript[:30000]} # Limit to ~30k chars to prevent token overflow
+{transcript[:30000]}
+
+INSTRUCTIONS:
+1. Explain the video and answer any questions the student has simply, clearly, and engagingly.
+2. Use fun examples, simple analogies, and emojis suitable for kids.
+3. If the transcript is brief or unavailable, explain the subject from the video title using your academic knowledge.
+4. Keep explanations clear, positive, and motivating!
 """
     
     generation_config = genai.types.GenerationConfig(temperature=0.6)
     
     model = genai.GenerativeModel(
-        model_name="gemini-3.6-flash",
+        model_name="gemini-flash-lite-latest",
         system_instruction=system_instruction,
         generation_config=generation_config
     )
     
     if is_breakdown:
-        prompt = "Please provide a highly engaging, structured, and simple summary (breakdown) of what this video teaches, using emojis. Limit to 3 short paragraphs."
+        prompt = f"Please provide a highly engaging, structured, and simple summary (breakdown) of what this video ({video_title or 'this topic'}) teaches, using emojis. Limit to 3 short paragraphs."
         notes = model.generate_content(prompt).text
         from content.models import AINotes
         AINotes.objects.create(video_id=video_id, notes_markdown=notes)
@@ -260,9 +338,16 @@ VIDEO TRANSCRIPT CONTEXT:
             formatted_history.append({'role': role, 'parts': [msg.get('text', '')]})
             last_role = role
         else:
-            formatted_history[-1]['parts'][0] += "\n" + msg.get('text', '')
+            if formatted_history:
+                formatted_history[-1]['parts'][0] += "\n" + msg.get('text', '')
+            else:
+                formatted_history.append({'role': role, 'parts': [msg.get('text', '')]})
+                last_role = role
             
-    if last_role == 'user':
+    while formatted_history and formatted_history[0]['role'] == 'model':
+        formatted_history.pop(0)
+
+    if formatted_history and formatted_history[-1]['role'] == 'user':
         last_user_msg = formatted_history.pop()['parts'][0]
         user_query = f"{last_user_msg}\n{user_query}"
         

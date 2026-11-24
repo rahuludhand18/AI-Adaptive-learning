@@ -244,6 +244,7 @@ export default function KidLearnPage() {
 
   // App & Gamification State
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchBlocked, setSearchBlocked] = useState<{ blocked: boolean; reason: string } | null>(null);
   const [stars, setStars] = useState(0);
   const [streak, setStreak] = useState(0);
   const [completedVideos, setCompletedVideos] = useState<number[]>([]);
@@ -376,16 +377,28 @@ export default function KidLearnPage() {
 
   const loadVideosForTopic = async (topic: Topic) => {
     try {
+      setSearchBlocked(null);
       let res = await apiRequest<Video[]>(`/api/content/videos/?topic=${topic.id}`);
       if (!res || res.length === 0) {
-        const chapterName = topic.title.replace(/\s*\(Part \d+\)\s*/g, '').trim();
-        const subjectName = selectedSubject?.name || '';
-        const gradeLevel = user?.grade_level || user?.profile?.grade_level || user?.grade || '6';
-        const searchQuery = `Class ${gradeLevel} ${subjectName} ${chapterName} NCERT in english`;
+        const isCustomSearch = topic.id === 9999;
+        const searchQuery = isCustomSearch
+          ? topic.title.trim()
+          : `Class ${user?.grade_level || '6'} ${selectedSubject?.name || ''} ${topic.title.replace(/\s*\(Part \d+\)\s*/g, '').trim()} in english`;
         
         const query = encodeURIComponent(searchQuery);
-        res = await apiRequest<Video[]>(`/api/learn/videos/?q=${query}`);
-        res = res.map((v, i) => ({ ...v, id: topic.id * 1000 + i }));
+        const searchRes: any = await apiRequest<any>(`/api/learn/videos/?q=${query}`);
+        
+        // Strict Educational Safety Gatekeeper: Handle blocked non-educational queries
+        if (searchRes && searchRes.blocked) {
+          setSearchBlocked({
+            blocked: true,
+            reason: searchRes.reason || searchRes.message || "Only educational and learning content is allowed in Kids Zone."
+          });
+          setVideos([]);
+          return;
+        }
+
+        res = Array.isArray(searchRes) ? searchRes.map((v: any, i: number) => ({ ...v, id: topic.id * 1000 + i })) : [];
       }
       if (res && res.length > 0) {
         setVideos(res);
@@ -402,6 +415,7 @@ export default function KidLearnPage() {
     setSelectedSubject(null);
     setSelectedTopic(null);
     setSelectedVideo(null);
+    setSearchBlocked(null);
     setTopics([]);
     setVideos([]);
     loadSubjectsForLevel(lvl.id);
@@ -411,6 +425,7 @@ export default function KidLearnPage() {
     setSelectedSubject(subj);
     setSelectedTopic(null);
     setSelectedVideo(null);
+    setSearchBlocked(null);
     setVideos([]);
     loadTopicsForSubject(subj.id);
   };
@@ -418,6 +433,7 @@ export default function KidLearnPage() {
   const handleSelectTopic = (top: Topic) => {
     setSelectedTopic(top);
     setSelectedVideo(null);
+    setSearchBlocked(null);
     loadVideosForTopic(top);
   };
 
@@ -469,11 +485,12 @@ export default function KidLearnPage() {
 
   const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
+      setSearchBlocked(null);
       const mockTopic: Topic = { 
         id: 9999, 
         subject: selectedSubject?.id || 0, 
         title: searchQuery.trim(), 
-        summary: `Search results for "${searchQuery.trim()}"` 
+        summary: `Educational search for "${searchQuery.trim()}"` 
       };
       handleSelectTopic(mockTopic);
     }
@@ -585,7 +602,10 @@ export default function KidLearnPage() {
                 </div>
                 
                 {/* Video Companion Notebook (Paper Texture + AI Chat) */}
-                <VideoCompanion videoId={selectedVideo.youtube_id || selectedVideo.video_id || ''} />
+                <VideoCompanion 
+                  videoId={selectedVideo.youtube_id || selectedVideo.video_id || ''} 
+                  title={selectedVideo.title}
+                />
 
                 {/* Video Meta Info */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-100 dark:border-slate-800 pb-4">
@@ -965,7 +985,10 @@ export default function KidLearnPage() {
                   </div>
 
                   <button
-                    onClick={() => setSelectedTopic(null)}
+                    onClick={() => {
+                      setSelectedTopic(null);
+                      setSearchBlocked(null);
+                    }}
                     className="text-xs font-extrabold text-slate-500 dark:text-slate-400 hover:text-emerald-600 flex items-center gap-1 cursor-pointer bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 rounded-full"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
@@ -973,66 +996,126 @@ export default function KidLearnPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {videos.map((vid) => {
-                    const isDone = completedVideos.includes(vid.id);
-                    return (
-                      <div
-                        key={vid.id}
-                        onClick={() => handleSelectVideo(vid)}
-                        className="group rounded-[28px] border-2 border-emerald-200 dark:border-slate-800 bg-emerald-50/50 dark:bg-slate-850 p-5 shadow-xs hover:border-emerald-400 hover:scale-105 transition-all duration-200 cursor-pointer space-y-4 flex flex-col justify-between"
-                      >
-                        <div className="space-y-3">
-                          <div className="relative aspect-video rounded-2xl bg-slate-900/90 overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform">
-                            <img
-                              src={vid.thumbnail_url || `https://img.youtube.com/vi/${vid.youtube_id || vid.video_id}/mqdefault.jpg`}
-                              alt={vid.title}
-                              className="w-full h-full object-cover opacity-85"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                            <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
-                              <div className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-md group-hover:scale-110 group-hover:animate-kid-wiggle transition-transform">
-                                <Play className="h-5 w-5 fill-white ml-0.5" />
+                {/* Educational Shield: Blocked Non-Educational Query Banner */}
+                {searchBlocked ? (
+                  <div className="rounded-[28px] border-2 border-amber-300 dark:border-amber-700/60 bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-white dark:from-slate-900 dark:to-slate-900 p-8 shadow-sm text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/80 border-2 border-amber-300 dark:border-amber-700 flex items-center justify-center mx-auto text-3xl shadow-sm">
+                      🛡️
+                    </div>
+                    <div className="space-y-1.5">
+                      <h3 className="text-xl font-extrabold text-amber-950 dark:text-amber-200">
+                        Educational Content Only!
+                      </h3>
+                      <p className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 max-w-lg mx-auto">
+                        {searchBlocked.reason}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-amber-200/60 dark:border-slate-800">
+                      <p className="text-xs font-extrabold text-slate-500 dark:text-slate-400 mb-3">
+                        FocusPath Kids is designed for safe learning. Try exploring these approved topics:
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {['Solar System 🪐', 'How Plants Grow 🌱', 'Fractions ➗', 'Dinosaurs 🦕', 'Intro to Coding 💻', 'Ancient Egypt 🏛️'].map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            onClick={() => {
+                              const cleanSugg = suggestion.replace(/ [^\s]+$/, '');
+                              setSearchQuery(cleanSugg);
+                              setSearchBlocked(null);
+                              const mockTopic: Topic = {
+                                id: 9999,
+                                subject: selectedSubject?.id || 0,
+                                title: cleanSugg,
+                                summary: `Educational search for "${cleanSugg}"`
+                              };
+                              handleSelectTopic(mockTopic);
+                            }}
+                            className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border-2 border-amber-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 transition-all cursor-pointer shadow-xs"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : videos.length === 0 ? (
+                  <div className="rounded-[28px] border-2 border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-8 text-center space-y-3">
+                    <div className="text-3xl">📚</div>
+                    <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-200">
+                      No educational lessons found for this topic
+                    </h4>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                      Try searching for a different educational subject like Science, Maths, History, Space, or Nature!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {videos.map((vid) => {
+                      const isDone = completedVideos.includes(vid.id);
+                      return (
+                        <div
+                          key={vid.id}
+                          onClick={() => handleSelectVideo(vid)}
+                          className="group rounded-[28px] border-2 border-emerald-200 dark:border-slate-800 bg-emerald-50/50 dark:bg-slate-850 p-5 shadow-xs hover:border-emerald-400 hover:scale-105 transition-all duration-200 cursor-pointer space-y-4 flex flex-col justify-between"
+                        >
+                          <div className="space-y-3">
+                            <div className="relative aspect-video rounded-2xl bg-slate-900/90 overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform">
+                              <img
+                                src={vid.thumbnail_url || `https://img.youtube.com/vi/${vid.youtube_id || vid.video_id}/mqdefault.jpg`}
+                                alt={vid.title}
+                                className="w-full h-full object-cover opacity-85"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-md group-hover:scale-110 group-hover:animate-kid-wiggle transition-transform">
+                                  <Play className="h-5 w-5 fill-white ml-0.5" />
+                                </div>
                               </div>
+
+                              <span className="absolute top-2 left-2 bg-emerald-600/90 backdrop-blur-xs text-white text-[10px] font-extrabold py-0.5 px-2 rounded-md flex items-center gap-1 shadow-xs">
+                                <span>✓</span>
+                                <span>Educational</span>
+                              </span>
+
+                              <span className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-extrabold py-0.5 px-2 rounded-md">
+                                {Math.floor((vid.duration_seconds || 300) / 60)}m
+                              </span>
                             </div>
 
-                            <span className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-extrabold py-0.5 px-2 rounded-md">
-                              {Math.floor((vid.duration_seconds || 300) / 60)}m
-                            </span>
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                                {vid.title}
+                              </h4>
+                              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                {vid.source_channel || 'Verified Educational Channel'}
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                              {vid.title}
-                            </h4>
-                            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                              {vid.source_channel || 'YouTube Kids Education'}
-                            </p>
+                          <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60 dark:border-slate-800">
+                            {isDone ? (
+                              <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Finished
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> +10 Stars
+                              </span>
+                            )}
+
+                            <span className="text-xs font-extrabold text-emerald-600 group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
+                              <span>Watch</span>
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </span>
                           </div>
                         </div>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60 dark:border-slate-800">
-                          {isDone ? (
-                            <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Finished
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> +10 Stars
-                            </span>
-                          )}
-
-                          <span className="text-xs font-extrabold text-emerald-600 group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
-                            <span>Watch</span>
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

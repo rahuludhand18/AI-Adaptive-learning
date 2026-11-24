@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { generateSchedule, uploadSyllabus, clearSchedule, listSubjects, deleteSubject, Subject, fetchUserRoutine, saveUserRoutine } from '@/lib/plannerApi';
+import { generateSchedule, uploadSyllabus, uploadSyllabusAll, clearSchedule, listSubjects, deleteSubject, Subject, fetchUserRoutine, saveUserRoutine } from '@/lib/plannerApi';
 import { useRouter } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -17,6 +17,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Layers,
+  BookMarked,
 } from 'lucide-react';
 
 export default function AdultOnboardingPage() {
@@ -31,7 +33,13 @@ export default function AdultOnboardingPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [executionMode, setExecutionMode] = useState<'study' | 'revision'>('study');
-  
+
+  // ── Upload mode toggle ───────────────────────────────────────────────────────
+  // 'single' = one PDF per subject (original flow)
+  // 'all'    = one combined PDF for all subjects (new flow)
+  const [uploadMode, setUploadMode] = useState<'single' | 'all'>('single');
+  const [multiResult, setMultiResult] = useState<{ id: number; name: string; modules_count: number }[] | null>(null);
+
   // Accordion state
   const [expandedSubjectId, setExpandedSubjectId] = useState<number | null>(null);
 
@@ -118,9 +126,29 @@ export default function AdultOnboardingPage() {
     }
   };
 
+  const processSyllabusFileAll = async (file: File) => {
+    setUploadError(null);
+    setMultiResult(null);
+    setUploadedFileName(file.name);
+    setIsParsingSyllabus(true);
+    try {
+      const res = await uploadSyllabusAll(file, difficulty);
+      setMultiResult(res.subjects);
+      await loadSubjects();
+    } catch (e: any) {
+      setUploadError("Multi-subject extraction failed. Please check your API keys and try again.");
+    } finally {
+      setIsParsingSyllabus(false);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      processSyllabusFile(e.target.files[0]);
+      if (uploadMode === 'all') {
+        processSyllabusFileAll(e.target.files[0]);
+      } else {
+        processSyllabusFile(e.target.files[0]);
+      }
     }
   };
 
@@ -128,7 +156,11 @@ export default function AdultOnboardingPage() {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processSyllabusFile(e.dataTransfer.files[0]);
+      if (uploadMode === 'all') {
+        processSyllabusFileAll(e.dataTransfer.files[0]);
+      } else {
+        processSyllabusFile(e.dataTransfer.files[0]);
+      }
     }
   };
 
@@ -201,22 +233,67 @@ export default function AdultOnboardingPage() {
           {/* Left Column (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
             
-            {/* Subject Name Input + Upload */}
+            {/* Subject Upload Card — dual mode */}
             <div className="bg-white/90 backdrop-blur-md rounded-[32px] border-4 border-orange-100 shadow-sm p-6 space-y-4">
-              <h2 className="text-base font-extrabold text-slate-900">
-                1. Name Your Subject
-              </h2>
-              <input
-                type="text"
-                placeholder="e.g. Cognitive Psychology"
-                value={newSubjectName}
-                onChange={(e) => setNewSubjectName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium"
-              />
 
-              <div className="pt-2">
+              {/* ── Mode Toggle ── */}
+              <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                <button
+                  onClick={() => { setUploadMode('single'); setMultiResult(null); setUploadError(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    uploadMode === 'single'
+                      ? 'bg-white dark:bg-slate-700 text-orange-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <BookMarked className="h-3.5 w-3.5" />
+                  Per Subject PDF
+                </button>
+                <button
+                  onClick={() => { setUploadMode('all'); setUploadError(null); setNewSubjectName(''); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    uploadMode === 'all'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  All Subjects PDF
+                </button>
+              </div>
+
+              {/* ── SINGLE SUBJECT MODE ── */}
+              {uploadMode === 'single' && (
+                <>
+                  <h2 className="text-base font-extrabold text-slate-900">
+                    1. Name Your Subject
+                  </h2>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cognitive Psychology"
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-textPrimary dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo/50 transition-all font-medium"
+                  />
+                </>
+              )}
+
+              {/* ── ALL SUBJECTS MODE info ── */}
+              {uploadMode === 'all' && (
+                <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-900">
+                  <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-1 flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" /> Combined Syllabus Mode
+                  </p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 leading-relaxed">
+                    Upload a single PDF containing all your subjects. The AI will automatically detect each subject, extract its modules and topics, and create separate study plans for each.
+                  </p>
+                </div>
+              )}
+
+              {/* ── Difficulty (shared) ── */}
+              <div className={uploadMode === 'single' ? 'pt-2' : ''}>
                 <h2 className="text-base font-extrabold text-slate-900 mb-2">
-                  2. Select Difficulty
+                  {uploadMode === 'single' ? '2.' : '1.'} Select Difficulty
                 </h2>
                 <select
                   value={difficulty}
@@ -229,11 +306,12 @@ export default function AdultOnboardingPage() {
                 </select>
               </div>
 
+              {/* ── Upload Zone (shared) ── */}
               <div className="pt-2">
                 <h2 className="text-base font-extrabold text-slate-900 mb-2">
-                  3. Upload Syllabus PDF
+                  {uploadMode === 'single' ? '3.' : '2.'} Upload Syllabus PDF
                 </h2>
-                
+
                 {uploadError && (
                   <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold flex items-center justify-between">
                     <span>{uploadError}</span>
@@ -241,41 +319,86 @@ export default function AdultOnboardingPage() {
                   </div>
                 )}
 
+                {/* Multi-upload success banner */}
+                {multiResult && multiResult.length > 0 && (
+                  <div className="mb-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+                    <p className="text-xs font-bold text-emerald-700 mb-2">✅ {multiResult.length} subject{multiResult.length > 1 ? 's' : ''} extracted!</p>
+                    <div className="flex flex-wrap gap-2">
+                      {multiResult.map((s) => (
+                        <span key={s.id} className="inline-flex items-center gap-1 bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                          <BookOpen className="h-3 w-3" />
+                          {s.name}
+                          <span className="text-emerald-400 font-normal">· {s.modules_count} modules</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(true);
-                  }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                   onDragLeave={() => setIsDragOver(false)}
-                  onDrop={handleDrop}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    if (e.dataTransfer.files?.[0]) {
+                      uploadMode === 'all'
+                        ? processSyllabusFileAll(e.dataTransfer.files[0])
+                        : processSyllabusFile(e.dataTransfer.files[0]);
+                    }
+                  }}
                   className={`border-2 border-dashed rounded-2xl p-6 transition-all flex flex-col items-center text-center ${
-                    isDragOver ? 'border-indigo bg-indigo/5 scale-[1.02]' : 'border-slate-300 dark:border-slate-700'
+                    isDragOver
+                      ? (uploadMode === 'all' ? 'border-indigo-400 bg-indigo-50/50 scale-[1.02]' : 'border-orange-400 bg-orange-50/50 scale-[1.02]')
+                      : 'border-slate-300 dark:border-slate-700'
                   }`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-indigo/10 text-indigo flex items-center justify-center mb-3">
-                    <UploadCloud className="w-6 h-6" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${uploadMode === 'all' ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-500'}`}>
+                    {uploadMode === 'all' ? <Layers className="w-6 h-6" /> : <UploadCloud className="w-6 h-6" />}
                   </div>
-                  
+
                   <p className="text-sm font-medium text-textSecondary dark:text-slate-400 max-w-xs mb-4">
-                    Drag your PDF here or click below to upload. The AI will extract modules.
+                    {uploadMode === 'all'
+                      ? 'Drop your combined PDF here — AI will auto-detect all subjects inside.'
+                      : 'Drag your PDF here or click below to upload. The AI will extract modules.'}
                   </p>
 
-                  <label className="cursor-pointer py-2.5 px-6 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-orange-500/30 hover:opacity-95 transition-all inline-flex items-center space-x-2">
+                  <label className={`cursor-pointer py-2.5 px-6 text-white font-bold text-sm rounded-2xl shadow-lg hover:opacity-95 transition-all inline-flex items-center space-x-2 ${
+                    uploadMode === 'all'
+                      ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-indigo-500/30'
+                      : 'bg-gradient-to-r from-orange-400 to-orange-500 shadow-orange-500/30'
+                  }`}>
                     <input
                       type="file"
                       accept=".txt,.pdf"
-                      onChange={handleFileUpload}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          uploadMode === 'all'
+                            ? processSyllabusFileAll(e.target.files[0])
+                            : processSyllabusFile(e.target.files[0]);
+                        }
+                      }}
                       className="hidden"
                       disabled={isParsingSyllabus}
                     />
                     <FileText className="w-4 h-4" />
-                    <span>{isParsingSyllabus ? "Extracting..." : "Upload & Parse"}</span>
+                    <span>
+                      {isParsingSyllabus
+                        ? 'Extracting...'
+                        : uploadMode === 'all'
+                          ? 'Upload All Subjects PDF'
+                          : 'Upload & Parse'}
+                    </span>
                   </label>
-                  
+
                   {isParsingSyllabus && (
                     <div className="mt-4 flex items-center space-x-2 text-xs font-semibold text-orange-500 animate-pulse">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>AI is extracting modules & topics...</span>
+                      <span>
+                        {uploadMode === 'all'
+                          ? 'AI is detecting all subjects, modules & topics...'
+                          : 'AI is extracting modules & topics...'}
+                      </span>
                     </div>
                   )}
                 </div>
